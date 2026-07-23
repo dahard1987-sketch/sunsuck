@@ -1,0 +1,1961 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>B5 해석지 스튜디오</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --accent: #c4171d;
+      --accent-dark: #941116;
+      --accent-soft: #fbeaec;
+      --accent-faint: #fff3f4;
+      --accent-rgb: 196, 23, 29;
+      --accent-contrast: #ffffff;
+      --ink: #111318;
+      --ink-soft: #394150;
+      --muted: #6f7785;
+      --line: #d9dde5;
+      --canvas: #e8eaee;
+      --paper-width: 182mm;
+      --paper-height: 257mm;
+      --paper-pad-top: 8.5mm;
+      --paper-pad-x: 9mm;
+      --paper-pad-bottom: 8mm;
+      --english-size: 12.4pt;
+      --english-leading: 1.42;
+      --guide-gap: 8.5mm;
+      --preview-zoom: 1;
+      --ui-font: "Pretendard Variable", Pretendard, "SUIT Variable", SUIT, "Segoe UI Variable Text", "Segoe UI", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      --document-font: "Pretendard Variable", Pretendard, "SUIT Variable", SUIT, "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", sans-serif;
+      --english-font: Aptos, "Segoe UI Variable Text", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-family: var(--ui-font);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      min-width: 1180px;
+      background: var(--canvas);
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      background: var(--canvas);
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font: inherit;
+    }
+
+    button,
+    input,
+    textarea,
+    select,
+    summary,
+    label {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :focus-visible {
+      outline: 3px solid rgba(var(--accent-rgb), 0.22);
+      outline-offset: 2px;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 392px minmax(788px, 1fr);
+      height: 100vh;
+      min-height: 680px;
+      overflow: hidden;
+    }
+
+    .editor {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      height: 100vh;
+      color: #20242c;
+      background: #f8f8f9;
+      border-right: 1px solid #d8dbe1;
+      box-shadow: 8px 0 30px rgba(30, 35, 45, 0.06);
+    }
+
+    .editor-head {
+      flex: 0 0 auto;
+      padding: 20px 22px 17px;
+      background: #fff;
+      border-bottom: 1px solid #e2e4e8;
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      width: 31px;
+      height: 31px;
+      color: var(--accent-contrast);
+      background: var(--accent);
+      border-radius: 7px;
+      font-size: 0.9rem;
+      font-weight: 900;
+      letter-spacing: -0.05em;
+    }
+
+    .brand-copy {
+      min-width: 0;
+    }
+
+    .brand-kicker {
+      margin: 0 0 1px;
+      color: var(--accent);
+      font-size: 0.64rem;
+      font-weight: 900;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      color: #16191f;
+      font-size: 1.16rem;
+      line-height: 1.2;
+      letter-spacing: -0.035em;
+    }
+
+    .editor-intro {
+      margin: 11px 0 0;
+      color: #626b79;
+      font-size: 0.78rem;
+      line-height: 1.48;
+    }
+
+    .live-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 13px;
+      padding: 9px 10px;
+      background: #f5f5f6;
+      border: 1px solid #e3e4e8;
+      border-radius: 7px;
+    }
+
+    .summary-state {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      gap: 7px;
+      color: #303743;
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+
+    .status-dot {
+      flex: 0 0 auto;
+      width: 7px;
+      height: 7px;
+      background: #2e8b57;
+      border-radius: 50%;
+      box-shadow: 0 0 0 3px rgba(46, 139, 87, 0.1);
+    }
+
+    .live-summary.is-warning .status-dot {
+      background: #c57a00;
+      box-shadow: 0 0 0 3px rgba(197, 122, 0, 0.12);
+    }
+
+    .live-summary.is-error .status-dot {
+      background: var(--accent);
+      box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+    }
+
+    .summary-count {
+      flex: 0 0 auto;
+      color: #737b88;
+      font-size: 0.68rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .editor-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      padding: 19px 22px 28px;
+      overflow: auto;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+    }
+
+    .section {
+      margin: 0 0 22px;
+      padding: 0;
+      border: 0;
+    }
+
+    .section:last-child {
+      margin-bottom: 2px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 0 11px;
+      color: #343a46;
+      font-size: 0.7rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .section-title .counter {
+      padding: 3px 6px;
+      color: var(--accent-dark);
+      background: var(--accent-soft);
+      border-radius: 4px;
+      font-size: 0.61rem;
+      letter-spacing: 0.02em;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .field {
+      display: grid;
+      min-width: 0;
+      gap: 5px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    .field > label,
+    .control-label {
+      color: #454c58;
+      font-size: 0.72rem;
+      font-weight: 750;
+      line-height: 1.3;
+    }
+
+    .input,
+    .select,
+    .passage {
+      width: 100%;
+      color: #191d24;
+      background: #fff;
+      border: 1px solid #cfd3db;
+      border-radius: 6px;
+      outline: none;
+      transition: border-color 130ms ease, box-shadow 130ms ease;
+    }
+
+    .input,
+    .select {
+      min-height: 37px;
+      padding: 8px 9px;
+      font-size: 0.79rem;
+    }
+
+    .select {
+      appearance: none;
+      padding-right: 30px;
+      background-image:
+        linear-gradient(45deg, transparent 50%, #687180 50%),
+        linear-gradient(135deg, #687180 50%, transparent 50%);
+      background-position:
+        calc(100% - 14px) 15px,
+        calc(100% - 9px) 15px;
+      background-size: 5px 5px, 5px 5px;
+      background-repeat: no-repeat;
+    }
+
+    .passage {
+      min-height: 235px;
+      padding: 12px;
+      resize: vertical;
+      font-family: var(--english-font);
+      font-size: 0.83rem;
+      line-height: 1.58;
+    }
+
+    .input:hover,
+    .select:hover,
+    .passage:hover {
+      border-color: #aeb4bf;
+    }
+
+    .input:focus,
+    .select:focus,
+    .passage:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.09);
+    }
+
+    .field-note {
+      margin: 0;
+      color: #7a828f;
+      font-size: 0.66rem;
+      line-height: 1.45;
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 3px;
+      padding: 3px;
+      background: #e9ebef;
+      border: 1px solid #dde0e5;
+      border-radius: 7px;
+    }
+
+    .segmented label {
+      position: relative;
+      min-width: 0;
+      cursor: pointer;
+    }
+
+    .segmented input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .segment-copy {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 31px;
+      padding: 5px 3px;
+      color: #626a77;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-weight: 800;
+      line-height: 1.15;
+      text-align: center;
+    }
+
+    .segmented input:checked + .segment-copy {
+      color: var(--accent-dark);
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(24, 28, 36, 0.13);
+    }
+
+    .segmented input:focus-visible + .segment-copy {
+      outline: 3px solid rgba(var(--accent-rgb), 0.18);
+      outline-offset: 1px;
+    }
+
+    .option-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      margin-top: 12px;
+    }
+
+    .color-control {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 37px;
+      padding: 5px 9px 5px 6px;
+      background: #fff;
+      border: 1px solid #dadee5;
+      border-radius: 6px;
+    }
+
+    .color-input {
+      flex: 0 0 auto;
+      width: 31px;
+      height: 25px;
+      padding: 0;
+      background: transparent;
+      border: 0;
+      border-radius: 4px;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .color-input::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+
+    .color-input::-webkit-color-swatch {
+      border: 0;
+      border-radius: 4px;
+    }
+
+    .color-input::-moz-color-swatch {
+      border: 0;
+      border-radius: 4px;
+    }
+
+    .color-value {
+      color: #4f5663;
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      font-size: 0.69rem;
+      font-weight: 750;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .toggle {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 37px;
+      padding: 7px 8px 7px 10px;
+      color: #444b57;
+      background: #fff;
+      border: 1px solid #dadee5;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.7rem;
+      font-weight: 750;
+    }
+
+    .toggle input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .switch {
+      position: relative;
+      flex: 0 0 auto;
+      width: 31px;
+      height: 18px;
+      background: #b8bec8;
+      border-radius: 20px;
+      transition: background 130ms ease;
+    }
+
+    .switch::after {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 12px;
+      height: 12px;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.24);
+      content: "";
+      transition: transform 130ms ease;
+    }
+
+    .toggle input:checked + .switch {
+      background: var(--accent);
+    }
+
+    .toggle input:checked + .switch::after {
+      transform: translateX(13px);
+    }
+
+    .toggle input:focus-visible + .switch {
+      outline: 3px solid rgba(var(--accent-rgb), 0.18);
+      outline-offset: 2px;
+    }
+
+    .advanced {
+      border-top: 1px solid #dde0e5;
+      border-bottom: 1px solid #dde0e5;
+    }
+
+    .advanced summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 1px;
+      color: #3f4652;
+      cursor: pointer;
+      list-style: none;
+      font-size: 0.72rem;
+      font-weight: 850;
+    }
+
+    .advanced summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .advanced summary::after {
+      color: #858c98;
+      content: "+";
+      font-size: 1rem;
+      font-weight: 500;
+    }
+
+    .advanced[open] summary::after {
+      content: "−";
+    }
+
+    .advanced-content {
+      padding: 4px 0 14px;
+    }
+
+    .editor-actions {
+      flex: 0 0 auto;
+      padding: 13px 22px 16px;
+      background: rgba(255, 255, 255, 0.98);
+      border-top: 1px solid #dfe2e7;
+    }
+
+    .action-row {
+      display: grid;
+      grid-template-columns: 0.82fr 1.18fr;
+      gap: 8px;
+    }
+
+    .button {
+      min-height: 41px;
+      padding: 9px 11px;
+      color: #343a45;
+      background: #fff;
+      border: 1px solid #cbd0d9;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.76rem;
+      font-weight: 850;
+      transition: background 130ms ease, border-color 130ms ease, transform 80ms ease;
+    }
+
+    .button:hover {
+      background: #f4f5f6;
+      border-color: #aeb5c0;
+    }
+
+    .button:active {
+      transform: translateY(1px);
+    }
+
+    .button.primary {
+      color: var(--accent-contrast);
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .button.primary:hover {
+      background: var(--accent-dark);
+      border-color: var(--accent-dark);
+    }
+
+    .button:disabled {
+      color: #9da3ad;
+      background: #e3e5e9;
+      border-color: #e3e5e9;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .sub-actions {
+      display: flex;
+      justify-content: center;
+      margin-top: 8px;
+    }
+
+    .text-button {
+      padding: 3px 7px;
+      color: #6f7785;
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+      font-size: 0.67rem;
+      font-weight: 750;
+      text-decoration: underline;
+      text-decoration-color: #c8ccd3;
+      text-underline-offset: 3px;
+    }
+
+    .print-tip {
+      margin: 8px 0 0;
+      color: #7a828f;
+      font-size: 0.62rem;
+      line-height: 1.42;
+      text-align: center;
+    }
+
+    .preview-panel {
+      display: flex;
+      min-width: 0;
+      min-height: 0;
+      flex-direction: column;
+      background: var(--canvas);
+    }
+
+    .preview-bar {
+      position: relative;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex: 0 0 auto;
+      min-height: 54px;
+      padding: 10px 22px;
+      color: #333a46;
+      background: rgba(248, 249, 250, 0.96);
+      border-bottom: 1px solid #d3d6dc;
+      backdrop-filter: blur(8px);
+    }
+
+    .preview-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.76rem;
+      font-weight: 850;
+    }
+
+    .paper-chip {
+      padding: 4px 6px;
+      color: var(--accent-dark);
+      background: var(--accent-soft);
+      border-radius: 4px;
+      font-size: 0.6rem;
+      letter-spacing: 0.04em;
+    }
+
+    .preview-meta {
+      color: #747c89;
+      font-size: 0.68rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .preview-workspace {
+      flex: 1 1 auto;
+      min-width: 0;
+      min-height: 0;
+      padding: 28px max(24px, calc((100% - 760px) / 2)) 44px;
+      overflow: auto;
+      overscroll-behavior: contain;
+    }
+
+    .pages {
+      display: flex;
+      align-items: center;
+      flex-direction: column;
+      gap: 28px;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .worksheet-page {
+      position: relative;
+      display: flex;
+      flex: 0 0 auto;
+      flex-direction: column;
+      width: var(--paper-width);
+      height: var(--paper-height);
+      padding: var(--paper-pad-top) var(--paper-pad-x) var(--paper-pad-bottom);
+      color: var(--ink);
+      background: #fff;
+      box-shadow: 0 8px 32px rgba(31, 36, 46, 0.16), 0 1px 3px rgba(31, 36, 46, 0.12);
+      font-family: var(--document-font);
+      overflow: hidden;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      zoom: var(--preview-zoom);
+    }
+
+    .sheet-header {
+      position: relative;
+      z-index: 2;
+      flex: 0 0 auto;
+    }
+
+    .header-grid {
+      display: grid;
+      grid-template-columns: 42mm minmax(0, 1fr) 45mm;
+      align-items: start;
+      gap: 3mm;
+      min-height: 17.5mm;
+    }
+
+    .header-left {
+      min-width: 0;
+      text-align: center;
+    }
+
+    .category {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 6.6mm;
+      padding: 1mm 2mm;
+      color: var(--accent-contrast);
+      background: var(--accent);
+      font-size: 9.5pt;
+      font-weight: 850;
+      line-height: 1.15;
+      overflow-wrap: anywhere;
+    }
+
+    .semester {
+      padding: 1.25mm 1mm 1mm;
+      border-bottom: 0.35mm solid #171717;
+      font-size: 8.8pt;
+      font-weight: 760;
+      line-height: 1.1;
+      overflow-wrap: anywhere;
+    }
+
+    .header-title-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+      min-height: 14mm;
+      padding-bottom: 1.5mm;
+      text-align: center;
+    }
+
+    .sheet-title {
+      margin: 0;
+      color: var(--accent);
+      font-size: 19pt;
+      font-weight: 900;
+      line-height: 1.03;
+      letter-spacing: -0.045em;
+      overflow-wrap: anywhere;
+    }
+
+    .identity {
+      display: grid;
+      min-width: 0;
+      gap: 0.8mm;
+      padding-top: 0.2mm;
+      font-size: 8.3pt;
+      font-weight: 760;
+    }
+
+    .identity-line {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: end;
+      min-height: 5mm;
+      gap: 1.8mm;
+      border-bottom: 0.35mm solid #161616;
+    }
+
+    .identity-value {
+      min-width: 0;
+      padding-bottom: 0.5mm;
+      text-align: center;
+      overflow-wrap: anywhere;
+    }
+
+    .identity-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5mm;
+      padding-top: 0.9mm;
+      color: #4d4d4d;
+      font-size: 6.4pt;
+      font-weight: 650;
+    }
+
+    .identity-meta span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .unit-strip {
+      display: block;
+      min-height: 7.5mm;
+      margin-top: 1.7mm;
+      color: var(--accent-contrast);
+      background: var(--accent);
+    }
+
+    .unit-title {
+      min-width: 0;
+      padding: 1.35mm 2.4mm 1.2mm;
+      font-size: 10.5pt;
+      font-weight: 850;
+      line-height: 1.2;
+      overflow-wrap: anywhere;
+    }
+
+    .continuation-header {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      flex: 0 0 auto;
+      min-height: 9.5mm;
+      margin-bottom: 1.5mm;
+      padding-bottom: 1.6mm;
+      border-bottom: 0.75mm solid var(--accent);
+    }
+
+    .continuation-copy {
+      min-width: 0;
+    }
+
+    .continuation-title {
+      color: var(--accent);
+      font-size: 10.8pt;
+      font-weight: 900;
+      line-height: 1.05;
+      overflow-wrap: anywhere;
+    }
+
+    .continuation-unit {
+      margin-top: 0.8mm;
+      color: #4c4c4c;
+      font-size: 6.8pt;
+      font-weight: 650;
+      line-height: 1.15;
+      overflow-wrap: anywhere;
+    }
+
+    .continuation-page {
+      color: #676767;
+      font-size: 7pt;
+      font-weight: 800;
+    }
+
+    .page-body {
+      position: relative;
+      z-index: 2;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .worksheet-item {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      background: transparent;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .english-row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: start;
+      gap: 2.2mm;
+      min-height: 7.6mm;
+      padding: 1.6mm 0 1.15mm;
+      border-bottom: 0.32mm solid #121212;
+      font-size: var(--english-size);
+      font-family: var(--english-font);
+      line-height: var(--english-leading);
+    }
+
+    .worksheet-item:first-child .english-row {
+      padding-top: 1.15mm;
+    }
+
+    .english-row.no-number {
+      display: block;
+    }
+
+    .item-number {
+      min-width: 5.3mm;
+      padding-top: 0.06em;
+      color: var(--accent);
+      font-size: 0.72em;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      line-height: inherit;
+      text-align: right;
+    }
+
+    .sentence-copy {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .answer-zone {
+      position: relative;
+      height: var(--item-answer-height, 18mm);
+      border-bottom: 0.32mm solid #202020;
+      background: transparent;
+    }
+
+    .answer-zone.has-guides {
+      background-image: repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent calc(var(--guide-gap) - 0.18mm),
+        rgba(18, 18, 18, 0.105) calc(var(--guide-gap) - 0.18mm),
+        rgba(18, 18, 18, 0.105) var(--guide-gap)
+      );
+    }
+
+    .answer-hint {
+      position: absolute;
+      top: 1.2mm;
+      right: 0;
+      color: rgba(80, 80, 80, 0.28);
+      font-family: var(--document-font);
+      font-size: 5.8pt;
+      font-weight: 650;
+      letter-spacing: 0.05em;
+    }
+
+    .page-footer {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: end;
+      flex: 0 0 auto;
+      min-height: 5.5mm;
+      padding-top: 1.5mm;
+      color: #a3a3a3;
+      font-size: 6.6pt;
+      line-height: 1;
+    }
+
+    .footer-brand {
+      grid-column: 2;
+      font-weight: 750;
+      letter-spacing: 0.025em;
+    }
+
+    .footer-page {
+      grid-column: 3;
+      justify-self: end;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .page-footer.hidden {
+      visibility: hidden;
+    }
+
+    .empty-sheet {
+      display: grid;
+      place-items: center;
+      height: 100%;
+      color: #747b87;
+      text-align: center;
+    }
+
+    .empty-sheet div {
+      max-width: 100mm;
+      padding: 5mm;
+      background: #f7f7f8;
+      border: 0.3mm dashed #cfd2d8;
+      font-size: 9pt;
+      line-height: 1.5;
+    }
+
+    .measurement .answer-zone {
+      height: 0 !important;
+      border-bottom: 0 !important;
+    }
+
+    .measurement {
+      visibility: hidden !important;
+    }
+
+    .fit-note {
+      position: absolute;
+      z-index: 5;
+      right: 9mm;
+      bottom: 9mm;
+      left: 9mm;
+      padding: 3mm;
+      color: var(--accent-dark);
+      background: var(--accent-faint);
+      border: 0.35mm solid var(--accent);
+      font-size: 8pt;
+      font-weight: 700;
+      line-height: 1.4;
+      text-align: center;
+    }
+
+    .print-only {
+      display: none !important;
+    }
+
+    @page {
+      size: 182mm 257mm;
+      margin: 0;
+    }
+
+    @media print {
+      html,
+      body {
+        width: auto !important;
+        min-width: 0 !important;
+        height: auto !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+      }
+
+      .screen-only,
+      .editor,
+      .preview-bar {
+        display: none !important;
+      }
+
+      .print-only {
+        display: block !important;
+      }
+
+      .app,
+      .preview-panel,
+      .preview-workspace,
+      .pages {
+        display: block !important;
+        width: auto !important;
+        min-width: 0 !important;
+        height: auto !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        background: #fff !important;
+      }
+
+      .worksheet-page {
+        width: 182mm !important;
+        height: 257mm !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        overflow: hidden !important;
+        break-after: page;
+        page-break-after: always;
+        zoom: 1 !important;
+      }
+
+      .worksheet-page:last-child {
+        break-after: auto;
+        page-break-after: auto;
+      }
+
+      .worksheet-item {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      .empty-sheet {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <aside class="editor screen-only" aria-label="해석지 편집기">
+      <header class="editor-head">
+        <div class="brand-row">
+          <div class="brand-mark" aria-hidden="true">C</div>
+          <div class="brand-copy">
+            <p class="brand-kicker">CANB Worksheet</p>
+            <h1>B5 해석지 스튜디오</h1>
+          </div>
+        </div>
+        <p class="editor-intro">문장의 길이와 실제 줄 수를 측정해 번역 공간을 다르게 배분하고, 한 장의 앞·뒷면 안에 자동으로 정리합니다.</p>
+        <div class="live-summary" id="liveSummary">
+          <span class="summary-state"><span class="status-dot" aria-hidden="true"></span><span id="summaryText">레이아웃 분석 중</span></span>
+          <span class="summary-count" id="summaryCount">0문장</span>
+        </div>
+      </header>
+
+      <div class="editor-scroll">
+        <form id="worksheetForm">
+          <fieldset class="section">
+            <legend class="section-title"><span>English passage</span><span class="counter" id="sentenceCount">0 sentences</span></legend>
+            <div class="field">
+              <label for="passage">영어 지문</label>
+              <textarea class="passage" id="passage" name="passage" spellcheck="false"></textarea>
+              <p class="field-note">교재의 줄바꿈은 자동으로 정리됩니다. 꺾쇠·따옴표·철자·대소문자는 원문 그대로 유지합니다.</p>
+            </div>
+          </fieldset>
+
+          <fieldset class="section">
+            <legend class="section-title">Writing space</legend>
+            <div class="field">
+              <span class="control-label" id="spaceModeLabel">문장별 공간 배분</span>
+              <div class="segmented" role="radiogroup" aria-labelledby="spaceModeLabel">
+                <label>
+                  <input type="radio" name="spaceMode" value="compact">
+                  <span class="segment-copy">효율형</span>
+                </label>
+                <label>
+                  <input type="radio" name="spaceMode" value="balanced">
+                  <span class="segment-copy">균형형</span>
+                </label>
+                <label>
+                  <input type="radio" name="spaceMode" value="generous">
+                  <span class="segment-copy">필기 우선</span>
+                </label>
+              </div>
+              <p class="field-note">모든 칸을 똑같이 만들지 않고 단어 수와 줄 수에 따라 각 답안 공간을 따로 계산합니다.</p>
+            </div>
+
+            <div class="option-row">
+              <div class="field">
+                <label for="fontSize">영문 크기</label>
+                <select class="select" id="fontSize" name="fontSize">
+                  <option value="compact">11.4pt · 컴팩트</option>
+                  <option value="standard">12.4pt · 표준</option>
+                  <option value="large">13.5pt · 크게</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="guideStyle">답안선 스타일</label>
+                <select class="select" id="guideStyle" name="guideStyle">
+                  <option value="subtle">옅은 보조선</option>
+                  <option value="boundary">경계선만</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="option-row">
+              <div class="field">
+                <label for="accentColor">키 컬러</label>
+                <div class="color-control">
+                  <input class="color-input" id="accentColor" name="accentColor" type="color" value="#c4171d">
+                  <output class="color-value" id="accentColorValue" for="accentColor">#C4171D</output>
+                </div>
+              </div>
+              <div class="field">
+                <span class="control-label">표시 옵션</span>
+                <label class="toggle" for="showNumbers">
+                  <span>문장 번호</span>
+                  <input id="showNumbers" name="showNumbers" type="checkbox">
+                  <span class="switch" aria-hidden="true"></span>
+                </label>
+              </div>
+            </div>
+          </fieldset>
+
+          <details class="advanced">
+            <summary>문서 정보</summary>
+            <div class="advanced-content">
+              <div class="field-grid">
+                <div class="field">
+                  <label for="worksheetTitle">제목</label>
+                  <input class="input" id="worksheetTitle" name="worksheetTitle" type="text">
+                </div>
+                <div class="field">
+                  <label for="teacherName">선생님</label>
+                  <input class="input" id="teacherName" name="teacherName" type="text">
+                </div>
+                <div class="field">
+                  <label for="categoryLabel">분류</label>
+                  <input class="input" id="categoryLabel" name="categoryLabel" type="text">
+                </div>
+                <div class="field">
+                  <label for="semesterLabel">학기</label>
+                  <input class="input" id="semesterLabel" name="semesterLabel" type="text">
+                </div>
+                <div class="field full">
+                  <label for="unitTitle">단원 제목</label>
+                  <input class="input" id="unitTitle" name="unitTitle" type="text">
+                </div>
+                <div class="field">
+                  <label for="className">반 <span aria-hidden="true">(선택)</span></label>
+                  <input class="input" id="className" name="className" type="text" placeholder="예: X2-A">
+                </div>
+                <div class="field">
+                  <label for="worksheetDate">날짜 <span aria-hidden="true">(선택)</span></label>
+                  <input class="input" id="worksheetDate" name="worksheetDate" type="text" placeholder="예: 2026. 07. 24.">
+                </div>
+                <div class="field full">
+                  <label for="footerText">바닥글</label>
+                  <input class="input" id="footerText" name="footerText" type="text">
+                </div>
+              </div>
+              <div class="option-row">
+                <label class="toggle" for="showFooter">
+                  <span>바닥글 표시</span>
+                  <input id="showFooter" name="showFooter" type="checkbox">
+                  <span class="switch" aria-hidden="true"></span>
+                </label>
+                <label class="toggle" for="showAnswerHint">
+                  <span>해석 표시</span>
+                  <input id="showAnswerHint" name="showAnswerHint" type="checkbox">
+                  <span class="switch" aria-hidden="true"></span>
+                </label>
+              </div>
+            </div>
+          </details>
+        </form>
+      </div>
+
+      <footer class="editor-actions">
+        <div class="action-row">
+          <button class="button" id="refreshButton" type="button">다시 계산</button>
+          <button class="button primary" id="printButton" type="button">B5 양면 인쇄</button>
+        </div>
+        <div class="sub-actions">
+          <button class="text-button" id="resetButton" type="button">기본 예시로 초기화</button>
+        </div>
+        <p class="print-tip">JIS B5 · 182 × 257mm · 배율 100% · 한 면에 1쪽 · 배경 그래픽 켜기 · 브라우저 머리글/바닥글 끄기</p>
+      </footer>
+    </aside>
+
+    <section class="preview-panel" aria-label="B5 인쇄 미리보기">
+      <header class="preview-bar screen-only">
+        <div class="preview-label">
+          <span>인쇄 미리보기</span>
+          <span class="paper-chip">JIS B5 · FRONT / BACK</span>
+        </div>
+        <div class="preview-meta" id="previewMeta" aria-live="polite">레이아웃 계산 중…</div>
+      </header>
+      <div class="preview-workspace" id="previewWorkspace">
+        <div class="pages" id="pages"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const STORAGE_KEY = "canb-b5-worksheet-studio-v2";
+
+      const SAMPLE_PASSAGE = `While I was working inside the house, a garbage truck went down our
+street making great noise. The truck stopped at almost every house
+to collect and crush the garbage. It was really noisy and broke my
+concentration. It was now impossible for me to put up with the noise. I
+walked to the window, and stared angrily at the driver of the truck.
+But in the yard, my five-year-old son was excited. I watched him climb
+up a tree near the street. <From there, it was easy to look inside the huge
+truck.> Inside the truck, giant metal teeth chewed up the garbage. The
+noise made it more exciting to him. It's a wonderful thing that five-year-olds
+can enjoy life by just watching garbage trucks, and that adults can
+enjoy life by just watching five-year-olds.`;
+
+      const DEFAULTS = Object.freeze({
+        passage: SAMPLE_PASSAGE,
+        worksheetTitle: "X2 해석지",
+        categoryLabel: "해석지 숙제",
+        semesterLabel: "2026 여름학기",
+        unitTitle: "Unit 1. Clauses/Phrases Used as Subjects",
+        teacherName: "최영진",
+        className: "",
+        worksheetDate: "",
+        footerText: "CANB English",
+        accentColor: "#c4171d",
+        spaceMode: "balanced",
+        fontSize: "standard",
+        guideStyle: "subtle",
+        showNumbers: true,
+        showFooter: true,
+        showAnswerHint: false
+      });
+
+      const FONT_SIZES = {
+        compact: 11.4,
+        standard: 12.4,
+        large: 13.5
+      };
+
+      const SPACE_PROFILES = {
+        compact: { base: 9.5, word: 0.31, line: 1.5, cap: 25 },
+        balanced: { base: 11.5, word: 0.47, line: 2.2, cap: 32 },
+        generous: { base: 13.5, word: 0.62, line: 2.8, cap: 39 }
+      };
+
+      const FIT_LEVELS = [
+        { name: "normal", fontScale: 1, minAnswerMm: 9.5, leading: 1.42 },
+        { name: "adjusted", fontScale: 0.91, minAnswerMm: 6.5, leading: 1.35 },
+        { name: "compressed", fontScale: 0.82, minAnswerMm: 3.8, leading: 1.28 }
+      ];
+
+      const form = document.getElementById("worksheetForm");
+      const pages = document.getElementById("pages");
+      const previewWorkspace = document.getElementById("previewWorkspace");
+      const previewMeta = document.getElementById("previewMeta");
+      const sentenceCount = document.getElementById("sentenceCount");
+      const liveSummary = document.getElementById("liveSummary");
+      const summaryText = document.getElementById("summaryText");
+      const summaryCount = document.getElementById("summaryCount");
+      const accentColorValue = document.getElementById("accentColorValue");
+      const refreshButton = document.getElementById("refreshButton");
+      const printButton = document.getElementById("printButton");
+      const resetButton = document.getElementById("resetButton");
+
+      let renderTimer = 0;
+      let resizeTimer = 0;
+      let renderVersion = 0;
+      let millimeterInPixels = 96 / 25.4;
+
+      function normalizePassage(text) {
+        return String(text ?? "")
+          .replace(/\r\n?/g, "\n")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
+      function isMeaningfulSentence(text) {
+        return /[\p{L}\p{N}]/u.test(text);
+      }
+
+      function fallbackSentenceSplit(text) {
+        const protectedText = text
+          .replace(/\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St)\./gi, "$1\u0001")
+          .replace(/\b(e\.g|i\.e|etc)\./gi, match => match.replace(/\./g, "\u0001"));
+
+        return (protectedText.match(/.+?(?:[.!?]+(?:["'’”)\]}>]+)?(?=\s+|$)|$)/g) || [])
+          .map(part => part.replace(/\u0001/g, ".").trim())
+          .filter(isMeaningfulSentence);
+      }
+
+      function repairAngleBracketSegments(segments) {
+        const repaired = [];
+
+        segments.forEach(raw => {
+          let segment = raw.trim();
+          if (!segment) return;
+
+          if (
+            segment.startsWith(">") &&
+            repaired.length &&
+            repaired[repaired.length - 1].includes("<") &&
+            !repaired[repaired.length - 1].includes(">")
+          ) {
+            repaired[repaired.length - 1] += ">";
+            segment = segment.slice(1).trimStart();
+          }
+
+          if (segment && isMeaningfulSentence(segment)) repaired.push(segment);
+        });
+
+        return repaired;
+      }
+
+      function splitIntoSentences(text) {
+        const normalized = normalizePassage(text);
+        if (!normalized) return [];
+
+        if (typeof Intl !== "undefined" && typeof Intl.Segmenter === "function") {
+          try {
+            const segmenter = new Intl.Segmenter("en", { granularity: "sentence" });
+            return repairAngleBracketSegments(
+              Array.from(segmenter.segment(normalized), item => item.segment)
+            );
+          } catch (error) {
+            return repairAngleBracketSegments(fallbackSentenceSplit(normalized));
+          }
+        }
+
+        return repairAngleBracketSegments(fallbackSentenceSplit(normalized));
+      }
+
+      function safeString(value, fallback = "") {
+        return typeof value === "string" ? value : fallback;
+      }
+
+      function validChoice(value, options, fallback) {
+        return options.includes(value) ? value : fallback;
+      }
+
+      function normalizeHexColor(value, fallback = DEFAULTS.accentColor) {
+        return /^#[0-9a-f]{6}$/i.test(String(value)) ? String(value).toLowerCase() : fallback;
+      }
+
+      function hexToRgb(hex) {
+        const value = normalizeHexColor(hex).slice(1);
+        return {
+          r: parseInt(value.slice(0, 2), 16),
+          g: parseInt(value.slice(2, 4), 16),
+          b: parseInt(value.slice(4, 6), 16)
+        };
+      }
+
+      function rgbToHex({ r, g, b }) {
+        return `#${[r, g, b]
+          .map(value => Math.round(value).toString(16).padStart(2, "0"))
+          .join("")}`;
+      }
+
+      function mixColor(source, target, amount) {
+        return rgbToHex({
+          r: source.r + (target.r - source.r) * amount,
+          g: source.g + (target.g - source.g) * amount,
+          b: source.b + (target.b - source.b) * amount
+        });
+      }
+
+      function applyAccentColor(value) {
+        const color = normalizeHexColor(value);
+        const rgb = hexToRgb(color);
+        const luminance = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+        const root = document.documentElement;
+
+        root.style.setProperty("--accent", color);
+        root.style.setProperty("--accent-dark", mixColor(rgb, { r: 0, g: 0, b: 0 }, 0.25));
+        root.style.setProperty("--accent-soft", mixColor(rgb, { r: 255, g: 255, b: 255 }, 0.9));
+        root.style.setProperty("--accent-faint", mixColor(rgb, { r: 255, g: 255, b: 255 }, 0.955));
+        root.style.setProperty("--accent-rgb", `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+        root.style.setProperty("--accent-contrast", luminance > 168 ? "#15171b" : "#ffffff");
+        accentColorValue.value = color.toUpperCase();
+        accentColorValue.textContent = color.toUpperCase();
+      }
+
+      function sanitizeSettings(input = {}) {
+        return {
+          passage: safeString(input.passage, DEFAULTS.passage),
+          worksheetTitle: safeString(input.worksheetTitle, DEFAULTS.worksheetTitle),
+          categoryLabel: safeString(input.categoryLabel, DEFAULTS.categoryLabel),
+          semesterLabel: safeString(input.semesterLabel, DEFAULTS.semesterLabel),
+          unitTitle: safeString(input.unitTitle, DEFAULTS.unitTitle),
+          teacherName: safeString(input.teacherName, DEFAULTS.teacherName),
+          className: safeString(input.className),
+          worksheetDate: safeString(input.worksheetDate),
+          footerText: safeString(input.footerText, DEFAULTS.footerText),
+          accentColor: normalizeHexColor(input.accentColor),
+          spaceMode: validChoice(input.spaceMode, Object.keys(SPACE_PROFILES), DEFAULTS.spaceMode),
+          fontSize: validChoice(input.fontSize, Object.keys(FONT_SIZES), DEFAULTS.fontSize),
+          guideStyle: validChoice(input.guideStyle, ["subtle", "boundary"], DEFAULTS.guideStyle),
+          showNumbers: typeof input.showNumbers === "boolean" ? input.showNumbers : DEFAULTS.showNumbers,
+          showFooter: typeof input.showFooter === "boolean" ? input.showFooter : DEFAULTS.showFooter,
+          showAnswerHint: typeof input.showAnswerHint === "boolean" ? input.showAnswerHint : DEFAULTS.showAnswerHint
+        };
+      }
+
+      function setFormValue(name, value) {
+        const control = form.elements[name];
+        if (!control) return;
+
+        if (control instanceof RadioNodeList) {
+          control.value = String(value);
+        } else if (control.type === "checkbox") {
+          control.checked = Boolean(value);
+        } else {
+          control.value = String(value ?? "");
+        }
+      }
+
+      function applySettingsToForm(settings) {
+        Object.entries(settings).forEach(([name, value]) => setFormValue(name, value));
+      }
+
+      function readSettings() {
+        const data = new FormData(form);
+        return sanitizeSettings({
+          passage: data.get("passage"),
+          worksheetTitle: data.get("worksheetTitle"),
+          categoryLabel: data.get("categoryLabel"),
+          semesterLabel: data.get("semesterLabel"),
+          unitTitle: data.get("unitTitle"),
+          teacherName: data.get("teacherName"),
+          className: data.get("className"),
+          worksheetDate: data.get("worksheetDate"),
+          footerText: data.get("footerText"),
+          accentColor: data.get("accentColor"),
+          spaceMode: data.get("spaceMode"),
+          fontSize: data.get("fontSize"),
+          guideStyle: data.get("guideStyle"),
+          showNumbers: form.elements.showNumbers.checked,
+          showFooter: form.elements.showFooter.checked,
+          showAnswerHint: form.elements.showAnswerHint.checked
+        });
+      }
+
+      function saveSettings(settings = readSettings()) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+        } catch (error) {
+          // Private browsing can disable storage; rendering remains available.
+        }
+      }
+
+      function loadSettings() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          return saved ? sanitizeSettings(JSON.parse(saved)) : { ...DEFAULTS };
+        } catch (error) {
+          return { ...DEFAULTS };
+        }
+      }
+
+      function appendText(parent, tag, className, text) {
+        const element = document.createElement(tag);
+        if (className) element.className = className;
+        element.textContent = text;
+        parent.appendChild(element);
+        return element;
+      }
+
+      function createFirstHeader(settings) {
+        const header = document.createElement("header");
+        header.className = "sheet-header";
+
+        const grid = document.createElement("div");
+        grid.className = "header-grid";
+
+        const left = document.createElement("div");
+        left.className = "header-left";
+        appendText(left, "div", "category", settings.categoryLabel);
+        appendText(left, "div", "semester", settings.semesterLabel);
+
+        const titleWrap = document.createElement("div");
+        titleWrap.className = "header-title-wrap";
+        appendText(titleWrap, "h2", "sheet-title", settings.worksheetTitle);
+
+        const identity = document.createElement("div");
+        identity.className = "identity";
+
+        const nameLine = document.createElement("div");
+        nameLine.className = "identity-line";
+        appendText(nameLine, "span", "", "Name:");
+        appendText(nameLine, "span", "identity-value", "");
+
+        const teacherLine = document.createElement("div");
+        teacherLine.className = "identity-line";
+        appendText(teacherLine, "span", "", "Teacher:");
+        appendText(teacherLine, "span", "identity-value", settings.teacherName);
+        identity.append(nameLine, teacherLine);
+
+        if (settings.className || settings.worksheetDate) {
+          const meta = document.createElement("div");
+          meta.className = "identity-meta";
+          if (settings.className) appendText(meta, "span", "", `Class · ${settings.className}`);
+          if (settings.worksheetDate) appendText(meta, "span", "", `Date · ${settings.worksheetDate}`);
+          identity.appendChild(meta);
+        }
+
+        grid.append(left, titleWrap, identity);
+
+        const strip = document.createElement("div");
+        strip.className = "unit-strip";
+        appendText(strip, "span", "unit-title", settings.unitTitle);
+
+        header.append(grid, strip);
+        return header;
+      }
+
+      function createContinuationHeader(settings, pageNumber) {
+        const header = document.createElement("header");
+        header.className = "continuation-header";
+
+        const copy = document.createElement("div");
+        copy.className = "continuation-copy";
+        appendText(copy, "div", "continuation-title", settings.worksheetTitle);
+        appendText(copy, "div", "continuation-unit", settings.unitTitle);
+
+        appendText(header, "div", "continuation-page", `${pageNumber} / 2`);
+        header.insertBefore(copy, header.firstChild);
+        return header;
+      }
+
+      function createFooter(settings, pageNumber, totalPages) {
+        const footer = document.createElement("footer");
+        footer.className = `page-footer${settings.showFooter ? "" : " hidden"}`;
+        appendText(footer, "span", "footer-brand", settings.footerText);
+        appendText(footer, "span", "footer-page", `${pageNumber} / ${totalPages}`);
+        return footer;
+      }
+
+      function createPageShell(settings, pageNumber, totalPages) {
+        const page = document.createElement("article");
+        page.className = "worksheet-page";
+        page.dataset.page = String(pageNumber);
+        page.setAttribute("aria-label", `Worksheet page ${pageNumber}`);
+
+        page.appendChild(pageNumber === 1
+          ? createFirstHeader(settings)
+          : createContinuationHeader(settings, pageNumber));
+
+        const body = document.createElement("div");
+        body.className = "page-body";
+        page.appendChild(body);
+        page.appendChild(createFooter(settings, pageNumber, totalPages));
+        pages.appendChild(page);
+        return { page, body };
+      }
+
+      function createSentenceItem(sentence, index, settings, answerHeightPx, measurement = false) {
+        const item = document.createElement("section");
+        item.className = `worksheet-item${measurement ? " measurement" : ""}`;
+        item.setAttribute("aria-label", `Sentence ${index + 1}`);
+
+        const row = document.createElement("div");
+        row.className = `english-row${settings.showNumbers ? "" : " no-number"}`;
+        if (settings.showNumbers) appendText(row, "span", "item-number", String(index + 1).padStart(2, "0"));
+        appendText(row, "span", "sentence-copy", sentence);
+
+        const answer = document.createElement("div");
+        answer.className = `answer-zone${settings.guideStyle === "subtle" ? " has-guides" : ""}`;
+        answer.style.setProperty("--item-answer-height", `${Math.max(0, answerHeightPx)}px`);
+        answer.setAttribute("aria-hidden", "true");
+        if (settings.showAnswerHint && !measurement) appendText(answer, "span", "answer-hint", "해석");
+
+        item.append(row, answer);
+        return item;
+      }
+
+      function setFitTypography(settings, fitLevel) {
+        const requested = FONT_SIZES[settings.fontSize];
+        const size = Math.max(8.8, requested * fitLevel.fontScale);
+        document.documentElement.style.setProperty("--english-size", `${size.toFixed(2)}pt`);
+        document.documentElement.style.setProperty("--english-leading", String(fitLevel.leading));
+      }
+
+      function measureMillimeter() {
+        const probe = document.createElement("div");
+        probe.style.cssText = "position:absolute;visibility:hidden;width:100mm;height:1px;pointer-events:none";
+        document.body.appendChild(probe);
+        millimeterInPixels = probe.getBoundingClientRect().width / 100;
+        probe.remove();
+      }
+
+      function measureLayout(sentences, settings, fitLevel) {
+        pages.replaceChildren();
+        const first = createPageShell(settings, 1, 2);
+        const second = createPageShell(settings, 2, 2);
+        const capacities = [
+          Math.max(0, first.body.clientHeight - 2),
+          Math.max(0, second.body.clientHeight - 2)
+        ];
+
+        const metrics = sentences.map((sentence, index) => {
+          const item = createSentenceItem(sentence, index, settings, 0, true);
+          first.body.appendChild(item);
+          const row = item.querySelector(".english-row");
+          const copy = item.querySelector(".sentence-copy");
+          const rowHeight = row.getBoundingClientRect().height;
+          const copyStyle = getComputedStyle(copy);
+          const lineHeight = parseFloat(copyStyle.lineHeight) || 20;
+          const copyHeight = copy.getBoundingClientRect().height;
+          const lineCount = Math.max(1, Math.round(copyHeight / lineHeight));
+          const wordCount = (sentence.match(/\b[\p{L}\p{N}][\p{L}\p{N}'’.-]*\b/gu) || []).length;
+          item.remove();
+          return { sentence, index, rowHeight, lineCount, wordCount };
+        });
+
+        pages.replaceChildren();
+        return { capacities, metrics, fitLevel };
+      }
+
+      function desiredAnswerPixels(metric, settings) {
+        const profile = SPACE_PROFILES[settings.spaceMode];
+        const mm = Math.min(
+          profile.cap,
+          profile.base + metric.wordCount * profile.word + Math.max(0, metric.lineCount - 1) * profile.line
+        );
+        return mm * millimeterInPixels;
+      }
+
+      function groupStats(metrics, indices, capacity, settings, minAnswerPx) {
+        const fixed = indices.reduce((sum, index) => sum + metrics[index].rowHeight, 0);
+        const available = Math.max(0, capacity - fixed - 1);
+        const targets = indices.map(index => desiredAnswerPixels(metrics[index], settings));
+        const minimum = minAnswerPx * indices.length;
+        const targetTotal = targets.reduce((sum, value) => sum + value, 0);
+        const ratio = targetTotal > 0 ? Math.min(1, available / targetTotal) : 1;
+        return { indices, fixed, available, targets, minimum, targetTotal, ratio };
+      }
+
+      function distributeAnswerSpace(group, minAnswerPx) {
+        const count = group.indices.length;
+        if (!count) return [];
+
+        const minimumTotal = minAnswerPx * count;
+        const budget = Math.max(minimumTotal, group.available);
+        const targets = group.targets.map(target => Math.max(minAnswerPx, target));
+        const targetTotal = targets.reduce((sum, value) => sum + value, 0);
+
+        let heights;
+        if (budget <= targetTotal) {
+          const needs = targets.map(target => Math.max(0, target - minAnswerPx));
+          const needTotal = needs.reduce((sum, value) => sum + value, 0);
+          const remainder = Math.max(0, budget - minimumTotal);
+          heights = needs.map(need =>
+            minAnswerPx + (needTotal ? remainder * (need / needTotal) : remainder / count)
+          );
+        } else {
+          const maximums = targets.map(target =>
+            Math.min(42 * millimeterInPixels, target * 1.36 + 4 * millimeterInPixels)
+          );
+          const possibleExtra = maximums.map((max, index) => Math.max(0, max - targets[index]));
+          const possibleTotal = possibleExtra.reduce((sum, value) => sum + value, 0);
+          const extraBudget = Math.min(budget - targetTotal, possibleTotal);
+          heights = targets.map((target, index) =>
+            target + (possibleTotal ? extraBudget * (possibleExtra[index] / possibleTotal) : 0)
+          );
+        }
+
+        return heights.map(value => Math.max(minAnswerPx, Math.floor(value * 2) / 2));
+      }
+
+      function buildPlan(measurement, settings) {
+        const { metrics, capacities, fitLevel } = measurement;
+        const count = metrics.length;
+        const minAnswerPx = fitLevel.minAnswerMm * millimeterInPixels;
+        if (!count) return { pageGroups: [[]], fitLevel, overflow: false };
+
+        const all = Array.from({ length: count }, (_, index) => index);
+        const one = groupStats(metrics, all, capacities[0], settings, minAnswerPx);
+        if (one.available >= one.targetTotal) {
+          return {
+            pageGroups: [{ ...one, heights: distributeAnswerSpace(one, minAnswerPx) }],
+            fitLevel,
+            overflow: false
+          };
+        }
+
+        let best = null;
+        for (let split = 1; split < count; split += 1) {
+          const firstIndices = all.slice(0, split);
+          const secondIndices = all.slice(split);
+          const first = groupStats(metrics, firstIndices, capacities[0], settings, minAnswerPx);
+          const second = groupStats(metrics, secondIndices, capacities[1], settings, minAnswerPx);
+
+          if (first.available < first.minimum || second.available < second.minimum) continue;
+
+          const capacityShare = capacities[0] / (capacities[0] + capacities[1]);
+          const splitShare = split / count;
+          const satisfaction = Math.min(first.ratio, second.ratio);
+          const ratioBalance = Math.abs(first.ratio - second.ratio);
+          const splitBalance = Math.abs(splitShare - capacityShare);
+          const score = satisfaction * 100 - ratioBalance * 12 - splitBalance * 9;
+
+          if (!best || score > best.score) best = { score, first, second };
+        }
+
+        if (!best) return null;
+
+        return {
+          pageGroups: [
+            { ...best.first, heights: distributeAnswerSpace(best.first, minAnswerPx) },
+            { ...best.second, heights: distributeAnswerSpace(best.second, minAnswerPx) }
+          ],
+          fitLevel,
+          overflow: false
+        };
+      }
+
+      function findLayoutPlan(sentences, settings) {
+        for (const fitLevel of FIT_LEVELS) {
+          setFitTypography(settings, fitLevel);
+          const measurement = measureLayout(sentences, settings, fitLevel);
+          const plan = buildPlan(measurement, settings);
+          if (plan) return { plan, measurement };
+        }
+
+        const fitLevel = FIT_LEVELS[FIT_LEVELS.length - 1];
+        setFitTypography(settings, fitLevel);
+        const measurement = measureLayout(sentences, settings, fitLevel);
+        const count = sentences.length;
+        const all = Array.from({ length: count }, (_, index) => index);
+        const split = Math.max(1, Math.ceil(count * 0.48));
+        const groups = [all.slice(0, split), all.slice(split)];
+        const minAnswerPx = 1.8 * millimeterInPixels;
+        const pageGroups = groups.map((indices, pageIndex) => {
+          const group = groupStats(
+            measurement.metrics,
+            indices,
+            measurement.capacities[pageIndex],
+            settings,
+            minAnswerPx
+          );
+          return { ...group, heights: distributeAnswerSpace(group, minAnswerPx) };
+        });
+
+        return {
+          plan: { pageGroups, fitLevel, overflow: true },
+          measurement
+        };
+      }
+
+      function renderPlan(sentences, settings, result) {
+        pages.replaceChildren();
+        const { plan, measurement } = result;
+        const totalPages = Math.min(2, Math.max(1, plan.pageGroups.length));
+
+        plan.pageGroups.slice(0, 2).forEach((group, pageIndex) => {
+          const shell = createPageShell(settings, pageIndex + 1, totalPages);
+          group.indices.forEach((sentenceIndex, localIndex) => {
+            shell.body.appendChild(
+              createSentenceItem(
+                sentences[sentenceIndex],
+                sentenceIndex,
+                settings,
+                group.heights[localIndex]
+              )
+            );
+          });
+        });
+
+        if (!sentences.length) {
+          const shell = pages.querySelector(".worksheet-page")
+            ? { body: pages.querySelector(".page-body") }
+            : createPageShell(settings, 1, 1);
+          const empty = document.createElement("div");
+          empty.className = "empty-sheet screen-only";
+          appendText(empty, "div", "", "영어 지문을 입력하면 문장별 해석 공간이 자동으로 만들어집니다.");
+          shell.body.appendChild(empty);
+        }
+
+        if (plan.overflow) {
+          const lastPage = pages.lastElementChild;
+          if (lastPage) {
+            appendText(
+              lastPage,
+              "div",
+              "fit-note screen-only",
+              "현재 지문은 두 면의 안전한 인쇄 범위를 넘습니다. 문장을 줄이거나 영문 크기를 낮춰 주세요."
+            );
+          }
+        }
+
+        const ratios = plan.pageGroups.map((group, index) => {
+          const used = group.fixed + group.heights.reduce((sum, value) => sum + value, 0);
+          return measurement.capacities[index] ? used / measurement.capacities[index] : 0;
+        });
+
+        return {
+          totalPages,
+          fitLevel: plan.fitLevel.name,
+          overflow: plan.overflow,
+          maxUsage: ratios.length ? Math.max(...ratios) : 0
+        };
+      }
+
+      function updateStatus(sentences, renderInfo) {
+        const count = sentences.length;
+        sentenceCount.textContent = `${count} sentence${count === 1 ? "" : "s"}`;
+        summaryCount.textContent = `${count}문장`;
+        liveSummary.classList.remove("is-warning", "is-error");
+        printButton.disabled = renderInfo.overflow;
+
+        if (!count) {
+          summaryText.textContent = "지문을 입력해 주세요";
+          previewMeta.textContent = "빈 B5 서식 · 1면";
+          return;
+        }
+
+        if (renderInfo.overflow) {
+          liveSummary.classList.add("is-error");
+          summaryText.textContent = "2면 수용량 초과";
+          previewMeta.textContent = `${count}문장 · 인쇄 전 지문 조정 필요`;
+          return;
+        }
+
+        if (renderInfo.fitLevel !== "normal") {
+          liveSummary.classList.add("is-warning");
+          summaryText.textContent = "2면 맞춤 밀도 적용";
+        } else {
+          summaryText.textContent = "가변 필기 공간 적용";
+        }
+
+        const zoom = Math.round(parseFloat(getComputedStyle(document.documentElement)
+          .getPropertyValue("--preview-zoom")) * 100);
+        previewMeta.textContent = `${count}문장 · B5 ${renderInfo.totalPages}면 · 미리보기 ${zoom}%`;
+      }
+
+      function updatePreviewScale(settings, sentences, renderInfo) {
+        const page = pages.querySelector(".worksheet-page");
+        if (!page || window.matchMedia("print").matches) return;
+
+        document.documentElement.style.setProperty("--preview-zoom", "1");
+        const available = Math.max(270, previewWorkspace.clientWidth - 38);
+        const naturalWidth = page.getBoundingClientRect().width;
+        const scale = Math.min(1, available / naturalWidth);
+        document.documentElement.style.setProperty("--preview-zoom", scale.toFixed(4));
+        updateStatus(sentences, renderInfo);
+      }
+
+      function renderWorksheet() {
+        const version = ++renderVersion;
+        const settings = readSettings();
+        const sentences = splitIntoSentences(settings.passage);
+        applyAccentColor(settings.accentColor);
+        saveSettings(settings);
+        measureMillimeter();
+
+        const result = findLayoutPlan(sentences, settings);
+        const renderInfo = renderPlan(sentences, settings, result);
+        updateStatus(sentences, renderInfo);
+
+        requestAnimationFrame(() => {
+          if (version !== renderVersion) return;
+          updatePreviewScale(settings, sentences, renderInfo);
+        });
+      }
+
+      function scheduleRender() {
+        window.clearTimeout(renderTimer);
+        renderTimer = window.setTimeout(renderWorksheet, 230);
+      }
+
+      function resetSample() {
+        applySettingsToForm({ ...DEFAULTS });
+        saveSettings({ ...DEFAULTS });
+        renderWorksheet();
+        form.elements.passage.focus();
+      }
+
+      function printWorksheet() {
+        window.clearTimeout(renderTimer);
+        renderWorksheet();
+        if (printButton.disabled) return;
+        requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
+      }
+
+      form.addEventListener("input", event => {
+        if (event.target === form.elements.accentColor) {
+          applyAccentColor(event.target.value);
+        }
+        scheduleRender();
+      });
+      form.addEventListener("change", scheduleRender);
+      refreshButton.addEventListener("click", renderWorksheet);
+      printButton.addEventListener("click", printWorksheet);
+      resetButton.addEventListener("click", resetSample);
+
+      window.addEventListener("resize", () => {
+        window.clearTimeout(resizeTimer);
+        resizeTimer = window.setTimeout(renderWorksheet, 180);
+      });
+
+      window.addEventListener("beforeprint", () => {
+        document.documentElement.style.setProperty("--preview-zoom", "1");
+      });
+
+      window.addEventListener("afterprint", renderWorksheet);
+
+      applySettingsToForm(loadSettings());
+      renderWorksheet();
+
+      window.WorksheetGenerator = Object.freeze({
+        normalizePassage,
+        splitIntoSentences,
+        renderWorksheet,
+        saveSettings,
+        loadSettings,
+        resetSample,
+        printWorksheet
+      });
+    })();
+  </script>
+</body>
+</html>

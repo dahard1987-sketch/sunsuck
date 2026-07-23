@@ -1458,6 +1458,13 @@ enjoy life by just watching five-year-olds.`;
         return sentences;
       }
 
+      function stripMergeMarkers(text) {
+        const sentence = String(text ?? "").trim();
+        return sentence.startsWith("<") && sentence.endsWith(">")
+          ? sentence.slice(1, -1).trim()
+          : sentence;
+      }
+
       function safeString(value, fallback = "") {
         return typeof value === "string" ? value : fallback;
       }
@@ -1756,7 +1763,7 @@ enjoy life by just watching five-year-olds.`;
         if (settings.showNumbers) appendText(row, "span", "item-number", String(index + 1).padStart(2, "0"));
         const sentenceCopy = document.createElement("span");
         sentenceCopy.className = "sentence-copy";
-        appendFormattedText(sentenceCopy, sentence);
+        appendFormattedText(sentenceCopy, stripMergeMarkers(sentence));
         row.appendChild(sentenceCopy);
 
         const answer = document.createElement("div");
@@ -2129,6 +2136,7 @@ enjoy life by just watching five-year-olds.`;
       window.WorksheetGenerator = Object.freeze({
         normalizePassage,
         splitIntoSentences,
+        stripMergeMarkers,
         appendFormattedText,
         renderWorksheet,
         saveSettings,

@@ -300,6 +300,74 @@
       line-height: 1.58;
     }
 
+    .markup-tools {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 2px;
+    }
+
+    .markup-buttons {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .format-button {
+      min-width: 30px;
+      height: 28px;
+      padding: 3px 8px;
+      color: #404754;
+      background: #fff;
+      border: 1px solid #d1d5dc;
+      border-radius: 5px;
+      cursor: pointer;
+      font-family: var(--ui-font);
+      font-size: 0.67rem;
+      font-weight: 750;
+      line-height: 1;
+    }
+
+    .format-button:hover {
+      color: var(--accent-dark);
+      background: var(--accent-faint);
+      border-color: rgba(var(--accent-rgb), 0.36);
+    }
+
+    .format-button strong {
+      font-weight: 900;
+    }
+
+    .format-button em {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 0.78rem;
+    }
+
+    .format-button u {
+      text-underline-offset: 2px;
+    }
+
+    .format-button.merge {
+      padding-right: 9px;
+      padding-left: 9px;
+      font-family: "Cascadia Code", Consolas, monospace;
+      letter-spacing: -0.04em;
+    }
+
+    .markup-hint {
+      color: #7b8390;
+      font-size: 0.62rem;
+      line-height: 1.3;
+      text-align: right;
+    }
+
+    .markup-hint code {
+      color: #5b6370;
+      font-family: "Cascadia Code", Consolas, monospace;
+      font-size: 0.61rem;
+    }
+
     .input:hover,
     .select:hover,
     .passage:hover {
@@ -893,6 +961,20 @@
       overflow-wrap: anywhere;
     }
 
+    .sentence-copy strong {
+      font-weight: 850;
+    }
+
+    .sentence-copy em {
+      font-style: italic;
+    }
+
+    .sentence-copy u {
+      text-decoration-color: currentColor;
+      text-decoration-thickness: 0.08em;
+      text-underline-offset: 0.13em;
+    }
+
     .answer-zone {
       position: relative;
       height: var(--item-answer-height, 18mm);
@@ -1090,8 +1172,17 @@
             <legend class="section-title"><span>English passage</span><span class="counter" id="sentenceCount">0 sentences</span></legend>
             <div class="field">
               <label for="passage">영어 지문</label>
+              <div class="markup-tools" aria-label="지문 서식 도구">
+                <div class="markup-buttons">
+                  <button class="format-button" type="button" data-wrap-prefix="**" data-wrap-suffix="**" data-placeholder="bold phrase" aria-label="선택 문구를 굵게"><strong>B</strong></button>
+                  <button class="format-button" type="button" data-wrap-prefix="*" data-wrap-suffix="*" data-placeholder="italic phrase" aria-label="선택 문구를 이탤릭"><em>I</em></button>
+                  <button class="format-button" type="button" data-wrap-prefix="__" data-wrap-suffix="__" data-placeholder="underlined phrase" aria-label="선택 문구에 밑줄"><u>U</u></button>
+                  <button class="format-button merge" type="button" data-wrap-prefix="&lt;" data-wrap-suffix="&gt;" data-placeholder="First sentence. Second sentence." aria-label="선택한 여러 문장을 한 블록으로 병합">&lt;&gt;</button>
+                </div>
+                <span class="markup-hint"><code>**굵게**</code> · <code>*기울임*</code> · <code>__밑줄__</code></span>
+              </div>
               <textarea class="passage" id="passage" name="passage" spellcheck="false"></textarea>
-              <p class="field-note">교재의 줄바꿈은 자동으로 정리됩니다. 꺾쇠·따옴표·철자·대소문자는 원문 그대로 유지합니다.</p>
+              <p class="field-note">여러 문장을 선택하고 &lt;&gt; 버튼을 누르면 하나의 블록으로 합쳐집니다. Markdown 서식 기호는 인쇄물에서 실제 굵게·이탤릭·밑줄로 표시됩니다.</p>
             </div>
           </fieldset>
 
@@ -1297,6 +1388,8 @@ enjoy life by just watching five-year-olds.`;
       const summaryText = document.getElementById("summaryText");
       const summaryCount = document.getElementById("summaryCount");
       const accentColorValue = document.getElementById("accentColorValue");
+      const passageInput = document.getElementById("passage");
+      const formatButtons = document.querySelectorAll("[data-wrap-prefix]");
       const refreshButton = document.getElementById("refreshButton");
       const printButton = document.getElementById("printButton");
       const resetButton = document.getElementById("resetButton");
@@ -1322,50 +1415,47 @@ enjoy life by just watching five-year-olds.`;
           .replace(/\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St)\./gi, "$1\u0001")
           .replace(/\b(e\.g|i\.e|etc)\./gi, match => match.replace(/\./g, "\u0001"));
 
-        return (protectedText.match(/.+?(?:[.!?]+(?:["'’”)\]}>]+)?(?=\s+|$)|$)/g) || [])
+        return (protectedText.match(/.+?(?:[.!?]+(?:["'’”)\]}>*_]+)?(?=\s+|$)|$)/g) || [])
           .map(part => part.replace(/\u0001/g, ".").trim())
           .filter(isMeaningfulSentence);
       }
 
-      function repairAngleBracketSegments(segments) {
-        const repaired = [];
+      function splitPlainSentences(text) {
+        const plain = text.trim();
+        if (!plain) return [];
 
-        segments.forEach(raw => {
-          let segment = raw.trim();
-          if (!segment) return;
-
-          if (
-            segment.startsWith(">") &&
-            repaired.length &&
-            repaired[repaired.length - 1].includes("<") &&
-            !repaired[repaired.length - 1].includes(">")
-          ) {
-            repaired[repaired.length - 1] += ">";
-            segment = segment.slice(1).trimStart();
+        if (typeof Intl !== "undefined" && typeof Intl.Segmenter === "function") {
+          try {
+            const segmenter = new Intl.Segmenter("en", { granularity: "sentence" });
+            return Array.from(segmenter.segment(plain), item => item.segment.trim())
+              .filter(isMeaningfulSentence);
+          } catch (error) {
+            return fallbackSentenceSplit(plain);
           }
+        }
 
-          if (segment && isMeaningfulSentence(segment)) repaired.push(segment);
-        });
-
-        return repaired;
+        return fallbackSentenceSplit(plain);
       }
 
       function splitIntoSentences(text) {
         const normalized = normalizePassage(text);
         if (!normalized) return [];
 
-        if (typeof Intl !== "undefined" && typeof Intl.Segmenter === "function") {
-          try {
-            const segmenter = new Intl.Segmenter("en", { granularity: "sentence" });
-            return repairAngleBracketSegments(
-              Array.from(segmenter.segment(normalized), item => item.segment)
-            );
-          } catch (error) {
-            return repairAngleBracketSegments(fallbackSentenceSplit(normalized));
-          }
+        const sentences = [];
+        const bracketGroupPattern = /<[^<>]*>/g;
+        let cursor = 0;
+        let match;
+
+        while ((match = bracketGroupPattern.exec(normalized)) !== null) {
+          sentences.push(...splitPlainSentences(normalized.slice(cursor, match.index)));
+
+          const mergedGroup = match[0].replace(/\s+/g, " ").trim();
+          if (isMeaningfulSentence(mergedGroup)) sentences.push(mergedGroup);
+          cursor = match.index + match[0].length;
         }
 
-        return repairAngleBracketSegments(fallbackSentenceSplit(normalized));
+        sentences.push(...splitPlainSentences(normalized.slice(cursor)));
+        return sentences;
       }
 
       function safeString(value, fallback = "") {
@@ -1504,6 +1594,70 @@ enjoy life by just watching five-year-olds.`;
         return element;
       }
 
+      const MARKUP_RULES = [
+        { delimiter: "**", tag: "strong" },
+        { delimiter: "__", tag: "u" },
+        { delimiter: "*", tag: "em" }
+      ];
+
+      function findDelimiter(text, delimiter, fromIndex) {
+        let index = text.indexOf(delimiter, fromIndex);
+
+        while (index !== -1 && delimiter === "*") {
+          const touchesAnotherAsterisk =
+            text[index - 1] === "*" || text[index + 1] === "*";
+          if (!touchesAnotherAsterisk) break;
+          index = text.indexOf(delimiter, index + 1);
+        }
+
+        return index;
+      }
+
+      function findNextMarkup(text, fromIndex) {
+        let next = null;
+
+        MARKUP_RULES.forEach(rule => {
+          const start = findDelimiter(text, rule.delimiter, fromIndex);
+          if (start === -1) return;
+
+          const contentStart = start + rule.delimiter.length;
+          const end = findDelimiter(text, rule.delimiter, contentStart);
+          if (end <= contentStart) return;
+
+          if (
+            !next ||
+            start < next.start ||
+            (start === next.start && rule.delimiter.length > next.rule.delimiter.length)
+          ) {
+            next = { rule, start, contentStart, end };
+          }
+        });
+
+        return next;
+      }
+
+      function appendFormattedText(parent, source) {
+        const text = String(source ?? "");
+        let cursor = 0;
+
+        while (cursor < text.length) {
+          const token = findNextMarkup(text, cursor);
+          if (!token) {
+            parent.appendChild(document.createTextNode(text.slice(cursor)));
+            break;
+          }
+
+          if (token.start > cursor) {
+            parent.appendChild(document.createTextNode(text.slice(cursor, token.start)));
+          }
+
+          const element = document.createElement(token.rule.tag);
+          appendFormattedText(element, text.slice(token.contentStart, token.end));
+          parent.appendChild(element);
+          cursor = token.end + token.rule.delimiter.length;
+        }
+      }
+
       function createFirstHeader(settings) {
         const header = document.createElement("header");
         header.className = "sheet-header";
@@ -1600,7 +1754,10 @@ enjoy life by just watching five-year-olds.`;
         const row = document.createElement("div");
         row.className = `english-row${settings.showNumbers ? "" : " no-number"}`;
         if (settings.showNumbers) appendText(row, "span", "item-number", String(index + 1).padStart(2, "0"));
-        appendText(row, "span", "sentence-copy", sentence);
+        const sentenceCopy = document.createElement("span");
+        sentenceCopy.className = "sentence-copy";
+        appendFormattedText(sentenceCopy, sentence);
+        row.appendChild(sentenceCopy);
 
         const answer = document.createElement("div");
         answer.className = `answer-zone${settings.guideStyle === "subtle" ? " has-guides" : ""}`;
@@ -1907,6 +2064,20 @@ enjoy life by just watching five-year-olds.`;
         renderTimer = window.setTimeout(renderWorksheet, 230);
       }
 
+      function wrapPassageSelection(prefix, suffix, placeholder) {
+        const start = passageInput.selectionStart;
+        const end = passageInput.selectionEnd;
+        const selected = passageInput.value.slice(start, end);
+        const content = selected || placeholder;
+        const replacement = `${prefix}${content}${suffix}`;
+
+        passageInput.setRangeText(replacement, start, end, "select");
+        passageInput.selectionStart = start + prefix.length;
+        passageInput.selectionEnd = start + prefix.length + content.length;
+        passageInput.focus();
+        passageInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+
       function resetSample() {
         applySettingsToForm({ ...DEFAULTS });
         saveSettings({ ...DEFAULTS });
@@ -1931,6 +2102,15 @@ enjoy life by just watching five-year-olds.`;
       refreshButton.addEventListener("click", renderWorksheet);
       printButton.addEventListener("click", printWorksheet);
       resetButton.addEventListener("click", resetSample);
+      formatButtons.forEach(button => {
+        button.addEventListener("click", () => {
+          wrapPassageSelection(
+            button.dataset.wrapPrefix || "",
+            button.dataset.wrapSuffix || "",
+            button.dataset.placeholder || ""
+          );
+        });
+      });
 
       window.addEventListener("resize", () => {
         window.clearTimeout(resizeTimer);
@@ -1949,6 +2129,7 @@ enjoy life by just watching five-year-olds.`;
       window.WorksheetGenerator = Object.freeze({
         normalizePassage,
         splitIntoSentences,
+        appendFormattedText,
         renderWorksheet,
         saveSettings,
         loadSettings,

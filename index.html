@@ -594,7 +594,7 @@
 
     .action-row {
       display: grid;
-      grid-template-columns: 0.82fr 1.18fr;
+      grid-template-columns: 0.72fr 0.88fr 1.25fr;
       gap: 8px;
     }
 
@@ -664,6 +664,124 @@
       font-size: 0.62rem;
       line-height: 1.42;
       text-align: center;
+    }
+
+    .pdf-tool {
+      padding-top: 2px;
+      border-top: 1px solid #dde0e5;
+    }
+
+    .pdf-tool-copy {
+      margin: -3px 0 10px;
+      color: #747c88;
+      font-size: 0.67rem;
+      line-height: 1.5;
+    }
+
+    .pdf-drop {
+      display: grid;
+      place-items: center;
+      min-height: 92px;
+      padding: 15px;
+      color: #565e6b;
+      background: #fff;
+      border: 1.5px dashed #b9bec8;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 0.72rem;
+      font-weight: 800;
+      line-height: 1.45;
+      text-align: center;
+      transition: background 130ms ease, border-color 130ms ease;
+    }
+
+    .pdf-drop:hover,
+    .pdf-drop.is-dragging {
+      color: var(--accent-dark);
+      background: var(--accent-faint);
+      border-color: var(--accent);
+    }
+
+    .pdf-drop small {
+      display: block;
+      margin-top: 4px;
+      color: #858c97;
+      font-size: 0.61rem;
+      font-weight: 650;
+    }
+
+    .pdf-file-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .pdf-status {
+      min-height: 18px;
+      margin: 9px 0 0;
+      color: #616a77;
+      font-size: 0.66rem;
+      line-height: 1.45;
+    }
+
+    .pdf-status.is-error {
+      color: var(--accent-dark);
+      font-weight: 750;
+    }
+
+    .pdf-status.is-success {
+      color: #236b45;
+      font-weight: 750;
+    }
+
+    .pdf-download {
+      width: 100%;
+      margin-top: 9px;
+    }
+
+    .pdf-diagnostics {
+      display: none;
+      margin-top: 10px;
+      padding: 9px 10px;
+      background: #f2f3f5;
+      border: 1px solid #e0e2e6;
+      border-radius: 6px;
+      color: #59616e;
+      font-size: 0.61rem;
+    }
+
+    .pdf-diagnostics.is-visible {
+      display: block;
+    }
+
+    .pdf-diagnostics table {
+      width: 100%;
+      border-collapse: collapse;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pdf-diagnostics th,
+    .pdf-diagnostics td {
+      padding: 3px 2px;
+      border-bottom: 1px solid #dfe1e5;
+      text-align: right;
+    }
+
+    .pdf-diagnostics th:first-child {
+      text-align: left;
+    }
+
+    .pdf-diagnostics tr:last-child th,
+    .pdf-diagnostics tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .pdf-warnings {
+      margin: 7px 0 0;
+      padding-left: 16px;
+      line-height: 1.45;
     }
 
     .preview-panel {
@@ -1295,18 +1413,31 @@
               </div>
             </div>
           </details>
+
+          <section class="section pdf-tool" aria-labelledby="optimizerTitle">
+            <h2 class="section-title" id="optimizerTitle">Optimize Existing PDF</h2>
+            <p class="pdf-tool-copy">브라우저에서 PDF를 새 문서 그래프로 다시 작성해 미사용 객체와 문서 수준 부가 구조를 정리합니다. 파일은 서버로 전송하거나 보관하지 않습니다.</p>
+            <label class="pdf-drop" id="pdfDropZone" for="pdfFileInput" tabindex="0" role="button">
+              <span>Drop a PDF here or choose a file<small>PDF · 최대 50 MB · 기기 안에서만 처리</small></span>
+            </label>
+            <input class="pdf-file-input" id="pdfFileInput" type="file" accept="application/pdf,.pdf">
+            <p class="pdf-status" id="pdfOptimizerStatus" aria-live="polite">최적화할 PDF를 선택해 주세요.</p>
+            <button class="button pdf-download" id="optimizedDownloadButton" type="button" disabled>Download Optimized PDF</button>
+            <div class="pdf-diagnostics" id="pdfDiagnostics" aria-live="polite"></div>
+          </section>
         </form>
       </div>
 
       <footer class="editor-actions">
         <div class="action-row">
           <button class="button" id="refreshButton" type="button">다시 계산</button>
-          <button class="button primary" id="printButton" type="button">B5 양면 인쇄</button>
+          <button class="button" id="printButton" type="button">브라우저 인쇄</button>
+          <button class="button primary" id="downloadPdfButton" type="button">Download PDF</button>
         </div>
         <div class="sub-actions">
           <button class="text-button" id="resetButton" type="button">기본 예시로 초기화</button>
         </div>
-        <p class="print-tip">JIS B5 · 182 × 257mm · 배율 100% · 한 면에 1쪽 · 배경 그래픽 켜기 · 브라우저 머리글/바닥글 끄기</p>
+        <p class="print-tip">권장: 구조가 단순한 전용 PDF 다운로드 · JIS B5 182 × 257mm · 텍스트 선택 가능</p>
       </footer>
     </aside>
 
@@ -1324,6 +1455,9 @@
     </section>
   </main>
 
+  <script src="vendor/pdf-lib.min.js"></script>
+  <script src="vendor/fontkit.umd.min.js"></script>
+  <script src="pdf-workflow.js"></script>
   <script>
     (() => {
       "use strict";
@@ -1392,12 +1526,20 @@ enjoy life by just watching five-year-olds.`;
       const formatButtons = document.querySelectorAll("[data-wrap-prefix]");
       const refreshButton = document.getElementById("refreshButton");
       const printButton = document.getElementById("printButton");
+      const downloadPdfButton = document.getElementById("downloadPdfButton");
       const resetButton = document.getElementById("resetButton");
+      const pdfDropZone = document.getElementById("pdfDropZone");
+      const pdfFileInput = document.getElementById("pdfFileInput");
+      const pdfOptimizerStatus = document.getElementById("pdfOptimizerStatus");
+      const optimizedDownloadButton = document.getElementById("optimizedDownloadButton");
+      const pdfDiagnostics = document.getElementById("pdfDiagnostics");
 
       let renderTimer = 0;
       let resizeTimer = 0;
       let renderVersion = 0;
       let millimeterInPixels = 96 / 25.4;
+      let currentLayout = null;
+      let optimizedPdf = null;
 
       function normalizePassage(text) {
         return String(text ?? "")
@@ -2010,6 +2152,7 @@ enjoy life by just watching five-year-olds.`;
         summaryCount.textContent = `${count}문장`;
         liveSummary.classList.remove("is-warning", "is-error");
         printButton.disabled = renderInfo.overflow;
+        downloadPdfButton.disabled = renderInfo.overflow;
 
         if (!count) {
           summaryText.textContent = "지문을 입력해 주세요";
@@ -2058,6 +2201,7 @@ enjoy life by just watching five-year-olds.`;
 
         const result = findLayoutPlan(sentences, settings);
         const renderInfo = renderPlan(sentences, settings, result);
+        currentLayout = { settings, sentences, result, renderInfo, millimeterInPixels };
         updateStatus(sentences, renderInfo);
 
         requestAnimationFrame(() => {
@@ -2099,6 +2243,101 @@ enjoy life by just watching five-year-olds.`;
         requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
       }
 
+      function setOptimizerStatus(message, state = "") {
+        pdfOptimizerStatus.textContent = message;
+        pdfOptimizerStatus.classList.toggle("is-error", state === "error");
+        pdfOptimizerStatus.classList.toggle("is-success", state === "success");
+      }
+
+      function appendDiagnosticRow(table, label, before, after) {
+        const row = document.createElement("tr");
+        appendText(row, "th", "", label);
+        appendText(row, "td", "", String(before));
+        appendText(row, "td", "", String(after));
+        table.appendChild(row);
+      }
+
+      function renderDiagnostics(before, after, warnings) {
+        pdfDiagnostics.replaceChildren();
+        const table = document.createElement("table");
+        const head = document.createElement("tr");
+        appendText(head, "th", "", "진단");
+        appendText(head, "th", "", "입력");
+        appendText(head, "th", "", "출력");
+        table.appendChild(head);
+        appendDiagnosticRow(table, "파일 크기", PdfWorkflow.formatBytes(before.bytes), PdfWorkflow.formatBytes(after.bytes));
+        appendDiagnosticRow(table, "페이지", before.pages, after.pages);
+        appendDiagnosticRow(table, "PDF 객체", before.objects, after.objects);
+        appendDiagnosticRow(table, "폰트 리소스", before.fonts, after.fonts);
+        appendDiagnosticRow(table, "임베드 폰트", before.embeddedFonts, after.embeddedFonts);
+        appendDiagnosticRow(table, "Unicode 글자맵", before.unicodeMaps, after.unicodeMaps);
+        appendDiagnosticRow(table, "이미지", before.images, after.images);
+        appendDiagnosticRow(table, "콘텐츠 스트림", before.contentStreams, after.contentStreams);
+        appendDiagnosticRow(table, "전체 스트림", before.streams, after.streams);
+        appendDiagnosticRow(table, "주석", before.annotations, after.annotations);
+        appendDiagnosticRow(table, "양식 필드", before.formFields, after.formFields);
+        pdfDiagnostics.appendChild(table);
+
+        if (warnings.length) {
+          const list = document.createElement("ul");
+          list.className = "pdf-warnings";
+          warnings.forEach(warning => appendText(list, "li", "", warning));
+          pdfDiagnostics.appendChild(list);
+        }
+        pdfDiagnostics.classList.add("is-visible");
+      }
+
+      async function downloadWorksheetPdf() {
+        window.clearTimeout(renderTimer);
+        renderWorksheet();
+        if (!currentLayout || downloadPdfButton.disabled) return;
+        const originalLabel = downloadPdfButton.textContent;
+        downloadPdfButton.disabled = true;
+        downloadPdfButton.textContent = "PDF 생성 중…";
+        try {
+          const result = await PdfWorkflow.createWorksheetPdf(currentLayout);
+          PdfWorkflow.downloadBytes(result.bytes, result.filename);
+        } catch (error) {
+          window.alert(error.message || "PDF 생성에 실패했습니다.");
+        } finally {
+          downloadPdfButton.textContent = originalLabel;
+          downloadPdfButton.disabled = Boolean(currentLayout && currentLayout.renderInfo.overflow);
+        }
+      }
+
+      async function processPdfFile(file) {
+        optimizedPdf = null;
+        optimizedDownloadButton.disabled = true;
+        pdfDiagnostics.classList.remove("is-visible");
+        pdfDiagnostics.replaceChildren();
+        if (!file) return;
+        if (!/\.pdf$/i.test(file.name) && file.type !== "application/pdf") {
+          setOptimizerStatus("PDF 파일만 선택할 수 있습니다.", "error");
+          return;
+        }
+        if (file.size > PdfWorkflow.MAX_PDF_BYTES) {
+          setOptimizerStatus("PDF는 50 MB 이하여야 합니다.", "error");
+          return;
+        }
+
+        setOptimizerStatus(`${file.name} 구조 분석 및 재작성 중…`);
+        pdfDropZone.setAttribute("aria-busy", "true");
+        try {
+          const result = await PdfWorkflow.optimizePdf(await file.arrayBuffer());
+          optimizedPdf = {
+            bytes: result.bytes,
+            filename: PdfWorkflow.safeFilename(file.name.replace(/\.pdf$/i, ""), "-optimized.pdf")
+          };
+          optimizedDownloadButton.disabled = false;
+          renderDiagnostics(result.before, result.after, result.warnings);
+          setOptimizerStatus(`완료 · ${result.before.objects}개 객체를 ${result.after.objects}개로 재작성했습니다.`, "success");
+        } catch (error) {
+          setOptimizerStatus(error.message || "PDF 처리에 실패했습니다.", "error");
+        } finally {
+          pdfDropZone.removeAttribute("aria-busy");
+        }
+      }
+
       form.addEventListener("input", event => {
         if (event.target === form.elements.accentColor) {
           applyAccentColor(event.target.value);
@@ -2108,7 +2347,31 @@ enjoy life by just watching five-year-olds.`;
       form.addEventListener("change", scheduleRender);
       refreshButton.addEventListener("click", renderWorksheet);
       printButton.addEventListener("click", printWorksheet);
+      downloadPdfButton.addEventListener("click", downloadWorksheetPdf);
       resetButton.addEventListener("click", resetSample);
+      pdfFileInput.addEventListener("change", () => processPdfFile(pdfFileInput.files[0]));
+      optimizedDownloadButton.addEventListener("click", () => {
+        if (optimizedPdf) PdfWorkflow.downloadBytes(optimizedPdf.bytes, optimizedPdf.filename);
+      });
+      pdfDropZone.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          pdfFileInput.click();
+        }
+      });
+      ["dragenter", "dragover"].forEach(type => {
+        pdfDropZone.addEventListener(type, event => {
+          event.preventDefault();
+          pdfDropZone.classList.add("is-dragging");
+        });
+      });
+      ["dragleave", "drop"].forEach(type => {
+        pdfDropZone.addEventListener(type, event => {
+          event.preventDefault();
+          pdfDropZone.classList.remove("is-dragging");
+        });
+      });
+      pdfDropZone.addEventListener("drop", event => processPdfFile(event.dataTransfer.files[0]));
       formatButtons.forEach(button => {
         button.addEventListener("click", () => {
           wrapPassageSelection(
@@ -2142,7 +2405,10 @@ enjoy life by just watching five-year-olds.`;
         saveSettings,
         loadSettings,
         resetSample,
-        printWorksheet
+        printWorksheet,
+        downloadWorksheetPdf,
+        processPdfFile,
+        getCurrentLayout: () => currentLayout
       });
     })();
   </script>

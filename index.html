@@ -45,6 +45,14 @@
       font-display: swap;
     }
 
+    @font-face {
+      font-family: "Noto Sans KR Embedded";
+      src: url("assets/NotoSansKR-Bold.ttf") format("truetype");
+      font-style: normal;
+      font-weight: 700 900;
+      font-display: swap;
+    }
+
     :root {
       color-scheme: light;
       --accent: #c4171d;
@@ -63,7 +71,7 @@
       --paper-pad-top: 8.5mm;
       --paper-pad-x: 9mm;
       --paper-pad-bottom: 8mm;
-      --english-size: 12.4pt;
+      --english-size: 11.6pt;
       --english-leading: 1.42;
       --guide-gap: 8.5mm;
       --preview-zoom: 1;
@@ -1369,9 +1377,9 @@
               <div class="field">
                 <label for="fontSize">영문 크기</label>
                 <select class="select" id="fontSize" name="fontSize">
-                  <option value="compact">11.4pt · 컴팩트</option>
-                  <option value="standard">12.4pt · 표준</option>
-                  <option value="large">13.5pt · 크게</option>
+                  <option value="compact">10.7pt · 컴팩트</option>
+                  <option value="standard">11.6pt · 표준</option>
+                  <option value="large">12.6pt · 크게</option>
                 </select>
               </div>
               <div class="field">
@@ -1536,9 +1544,9 @@ enjoy life by just watching five-year-olds.`;
       });
 
       const FONT_SIZES = {
-        compact: 11.4,
-        standard: 12.4,
-        large: 13.5
+        compact: 10.7,
+        standard: 11.6,
+        large: 12.6
       };
 
       const SPACE_PROFILES = {

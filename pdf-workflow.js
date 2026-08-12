@@ -20,6 +20,7 @@
   const CJK_RENDER_WIDTH_SCALE = 1000 / 920;
   const FONT_URLS = Object.freeze({
     korean: "assets/NotoSansKR-Regular.ttf",
+    koreanBold: "assets/NotoSansKR-Bold.ttf",
     regular: "assets/NotoSans-Regular.ttf",
     bold: "assets/NotoSans-Bold.ttf",
     italic: "assets/NotoSans-Italic.ttf",
@@ -141,7 +142,7 @@
   }
 
   function fontForRun(run, fonts) {
-    if (!isLatinText(run.text)) return fonts.korean;
+    if (!isLatinText(run.text)) return run.bold ? fonts.koreanBold : fonts.korean;
     if (run.bold && run.italic) return fonts.boldItalic;
     if (run.bold) return fonts.bold;
     if (run.italic) return fonts.italic;
@@ -250,25 +251,39 @@
     });
   }
 
-  function fitSingleLine(text, font, preferredSize, maxWidth, minimumSize, widthScale = 1) {
-    let size = preferredSize;
-    while (size > minimumSize && font.widthOfTextAtSize(text, size) * widthScale > maxWidth) size -= 0.25;
-    return size;
+  function plainMixedRuns(text, bold = false) {
+    const runs = [];
+    splitRunByAlphabet({ text, bold, italic: false, underline: false })
+      .forEach(run => appendLineRun(runs, run));
+    return runs;
+  }
+
+  function drawMixedSingleLine(page, text, options) {
+    const value = cleanText(text);
+    if (!value) return { size: options.size, width: 0 };
+    const runs = plainMixedRuns(value, Boolean(options.bold));
+    const minimumSize = options.minimumSize || 5.5;
+    let size = options.size;
+    while (size > minimumSize && lineWidth(runs, size, options.fonts) > options.width) size -= 0.25;
+    const textWidth = lineWidth(runs, size, options.fonts);
+    let cursorX = options.x;
+    if (options.align === "center") cursorX += Math.max(0, (options.width - textWidth) / 2);
+    if (options.align === "right") cursorX += Math.max(0, options.width - textWidth);
+    runs.forEach(run => {
+      page.drawText(run.text, {
+        x: cursorX,
+        y: options.y,
+        size,
+        font: fontForRun(run, options.fonts),
+        color: options.color
+      });
+      cursorX += runWidth(run, size, options.fonts);
+    });
+    return { size, width: textWidth };
   }
 
   function drawCenteredText(page, text, options) {
-    const value = cleanText(text);
-    if (!value) return;
-    const widthScale = options.widthScale || 1;
-    const size = fitSingleLine(value, options.font, options.size, options.width, options.minimumSize || 5.5, widthScale);
-    const textWidth = options.font.widthOfTextAtSize(value, size) * widthScale;
-    page.drawText(value, {
-      x: options.x + Math.max(0, (options.width - textWidth) / 2),
-      y: options.y,
-      size,
-      font: options.font,
-      color: options.color
-    });
+    return drawMixedSingleLine(page, text, { ...options, align: "center" });
   }
 
   function drawFirstHeader(page, settings, fonts, accent, contrast) {
@@ -283,11 +298,11 @@
     page.drawRectangle({ x: left, y: top - mm(6.6), width: categoryWidth, height: mm(6.6), color: accent });
     drawCenteredText(page, settings.categoryLabel, {
       x: left + mm(1.5), width: categoryWidth - mm(3), y: top - mm(4.7), size: 9.2,
-      font: fonts.korean, color: contrast, minimumSize: 6, widthScale: CJK_RENDER_WIDTH_SCALE
+      fonts, color: contrast, minimumSize: 6
     });
     drawCenteredText(page, settings.semesterLabel, {
       x: left + mm(1), width: categoryWidth - mm(2), y: top - mm(11.5), size: 8.4,
-      font: fonts.korean, color: PDFLib.rgb(0.08, 0.08, 0.08), minimumSize: 6, widthScale: CJK_RENDER_WIDTH_SCALE
+      fonts, color: PDFLib.rgb(0.08, 0.08, 0.08), minimumSize: 6
     });
     page.drawLine({
       start: { x: left, y: top - mm(13.1) }, end: { x: left + categoryWidth, y: top - mm(13.1) },
@@ -296,7 +311,7 @@
 
     drawCenteredText(page, settings.worksheetTitle, {
       x: titleX, width: titleWidth, y: top - mm(10.3), size: 18,
-      font: fonts.korean, color: accent, minimumSize: 9, widthScale: CJK_RENDER_WIDTH_SCALE
+      fonts, color: accent, minimumSize: 9, bold: true
     });
 
     const labelColor = PDFLib.rgb(0.08, 0.08, 0.08);
@@ -305,23 +320,29 @@
     page.drawText("Teacher:", { x: identityX, y: top - mm(9.5), size: 7.8, font: fonts.regular, color: labelColor });
     const teacher = cleanText(settings.teacherName);
     if (teacher) {
-      const teacherSize = fitSingleLine(teacher, fonts.korean, 7.8, identityWidth - mm(17), 5.5, CJK_RENDER_WIDTH_SCALE);
-      page.drawText(teacher, { x: identityX + mm(17), y: top - mm(9.5), size: teacherSize, font: fonts.korean, color: labelColor });
+      drawMixedSingleLine(page, teacher, {
+        x: identityX + mm(17), width: identityWidth - mm(17), y: top - mm(9.5),
+        size: 7.8, minimumSize: 5.5, fonts, color: labelColor
+      });
     }
     page.drawLine({ start: { x: identityX, y: top - mm(10.7) }, end: { x: identityX + identityWidth, y: top - mm(10.7) }, thickness: 0.9, color: labelColor });
 
     const meta = [settings.className ? `Class · ${settings.className}` : "", settings.worksheetDate ? `Date · ${settings.worksheetDate}` : ""]
       .filter(Boolean).join("   ");
     if (meta) {
-      const metaSize = fitSingleLine(meta, fonts.korean, 6.2, identityWidth, 4.8, CJK_RENDER_WIDTH_SCALE);
-      page.drawText(meta, { x: identityX, y: top - mm(14.2), size: metaSize, font: fonts.korean, color: PDFLib.rgb(0.3, 0.3, 0.3) });
+      drawMixedSingleLine(page, meta, {
+        x: identityX, width: identityWidth, y: top - mm(14.2), size: 6.2,
+        minimumSize: 4.8, fonts, color: PDFLib.rgb(0.3, 0.3, 0.3)
+      });
     }
 
     const stripTop = top - mm(19.2);
     page.drawRectangle({ x: left, y: stripTop - mm(7.5), width: B5_WIDTH - mm(18), height: mm(7.5), color: accent });
     const unit = cleanText(settings.unitTitle);
-    const unitSize = fitSingleLine(unit, fonts.korean, 10.2, B5_WIDTH - mm(23), 6.5, CJK_RENDER_WIDTH_SCALE);
-    page.drawText(unit, { x: left + mm(2.4), y: stripTop - mm(5), size: unitSize, font: fonts.korean, color: contrast });
+    drawMixedSingleLine(page, unit, {
+      x: left + mm(2.4), width: B5_WIDTH - mm(23), y: stripTop - mm(5),
+      size: 10.2, minimumSize: 6.5, fonts, color: contrast
+    });
     return stripTop - mm(9);
   }
 
@@ -330,11 +351,15 @@
     const right = B5_WIDTH - mm(9);
     const top = B5_HEIGHT - mm(8.5);
     const title = cleanText(settings.worksheetTitle);
-    const titleSize = fitSingleLine(title, fonts.korean, 10.5, mm(115), 7, CJK_RENDER_WIDTH_SCALE);
-    page.drawText(title, { x: left, y: top - mm(4), size: titleSize, font: fonts.korean, color: accent });
+    drawMixedSingleLine(page, title, {
+      x: left, width: mm(115), y: top - mm(4), size: 10.5,
+      minimumSize: 7, fonts, color: accent, bold: true
+    });
     const unit = cleanText(settings.unitTitle);
-    const unitSize = fitSingleLine(unit, fonts.korean, 6.6, mm(125), 5, CJK_RENDER_WIDTH_SCALE);
-    page.drawText(unit, { x: left, y: top - mm(7.2), size: unitSize, font: fonts.korean, color: PDFLib.rgb(0.3, 0.3, 0.3) });
+    drawMixedSingleLine(page, unit, {
+      x: left, width: mm(125), y: top - mm(7.2), size: 6.6,
+      minimumSize: 5, fonts, color: PDFLib.rgb(0.3, 0.3, 0.3)
+    });
     const pageText = `${pageNumber} / ${totalPages}`;
     const pageWidth = fonts.bold.widthOfTextAtSize(pageText, 7);
     page.drawText(pageText, { x: right - pageWidth, y: top - mm(7.2), size: 7, font: fonts.bold, color: PDFLib.rgb(0.4, 0.4, 0.4) });
@@ -347,9 +372,10 @@
     const y = mm(8.7);
     const color = PDFLib.rgb(0.62, 0.62, 0.62);
     const footer = cleanText(settings.footerText);
-    const footerSize = fitSingleLine(footer, fonts.korean, 6.4, mm(90), 5, CJK_RENDER_WIDTH_SCALE);
-    const footerWidth = fonts.korean.widthOfTextAtSize(footer, footerSize) * CJK_RENDER_WIDTH_SCALE;
-    page.drawText(footer, { x: (B5_WIDTH - footerWidth) / 2, y, size: footerSize, font: fonts.korean, color });
+    drawMixedSingleLine(page, footer, {
+      x: (B5_WIDTH - mm(90)) / 2, width: mm(90), y, size: 6.4,
+      minimumSize: 5, fonts, color, align: "center"
+    });
     const pageText = `${pageNumber} / ${totalPages}`;
     page.drawText(pageText, {
       x: B5_WIDTH - mm(9) - fonts.regular.widthOfTextAtSize(pageText, 6.4), y,
@@ -408,6 +434,7 @@
       // fontkit's CJK subsetting corrupts glyph maps in several PDF renderers.
       // Keep Korean complete, while safely subsetting the much smaller Latin faces.
       korean: await pdfDoc.embedFont(fontBytes.korean, { subset: false }),
+      koreanBold: await pdfDoc.embedFont(fontBytes.koreanBold, { subset: false }),
       regular: await pdfDoc.embedFont(fontBytes.regular, { subset: true }),
       bold: await pdfDoc.embedFont(fontBytes.bold, { subset: true }),
       italic: await pdfDoc.embedFont(fontBytes.italic, { subset: true }),
@@ -438,7 +465,7 @@
       const left = mm(9);
       const width = B5_WIDTH - mm(18);
       const fitLevel = plan.fitLevel || { fontScale: 1, leading: 1.42 };
-      const normalizedSettings = { ...settings, fontPointSize: ({ compact: 11.4, standard: 12.4, large: 13.5 })[settings.fontSize] || 12.4 };
+      const normalizedSettings = { ...settings, fontPointSize: ({ compact: 10.7, standard: 11.6, large: 12.6 })[settings.fontSize] || 11.6 };
       const items = preparePageItems(
         group, sentences, normalizedSettings, fitLevel, fonts, width, mmPerPixel, bodyTop - bodyBottom
       );
@@ -479,8 +506,10 @@
         }
         if (settings.showAnswerHint) {
           const hint = "해석";
-          const hintWidth = fonts.korean.widthOfTextAtSize(hint, 5.6) * CJK_RENDER_WIDTH_SCALE;
-          page.drawText(hint, { x: left + width - hintWidth, y: cursorTop - mm(3.2), size: 5.6, font: fonts.korean, color: PDFLib.rgb(0.72, 0.72, 0.72) });
+          drawMixedSingleLine(page, hint, {
+            x: left, width, y: cursorTop - mm(3.2), size: 5.6,
+            minimumSize: 5.6, fonts, color: PDFLib.rgb(0.72, 0.72, 0.72), align: "right"
+          });
         }
         page.drawLine({ start: { x: left, y: answerBottom }, end: { x: left + width, y: answerBottom }, thickness: mm(0.32), color: PDFLib.rgb(0.12, 0.12, 0.12) });
         cursorTop = answerBottom;

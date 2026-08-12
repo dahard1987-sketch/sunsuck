@@ -9,6 +9,7 @@ const PdfWorkflow = require("../pdf-workflow.js");
 
 const fontBytes = {
   korean: fs.readFileSync(path.join(__dirname, "../assets/NotoSansKR-Regular.ttf")),
+  koreanBold: fs.readFileSync(path.join(__dirname, "../assets/NotoSansKR-Bold.ttf")),
   regular: fs.readFileSync(path.join(__dirname, "../assets/NotoSans-Regular.ttf")),
   bold: fs.readFileSync(path.join(__dirname, "../assets/NotoSans-Bold.ttf")),
   italic: fs.readFileSync(path.join(__dirname, "../assets/NotoSans-Italic.ttf")),
@@ -81,7 +82,7 @@ test("mixed Korean and Latin wrapping reserves the finished PDF's CJK advance wi
   document.registerFontkit(fontkit);
   const korean = await document.embedFont(fontBytes.korean, { subset: false });
   const regular = await document.embedFont(fontBytes.regular, { subset: true });
-  const fonts = { korean, regular, bold: regular, italic: regular, boldItalic: regular };
+  const fonts = { korean, koreanBold: korean, regular, bold: regular, italic: regular, boldItalic: regular };
   const source = "한글과 English가 교차하는 혼합 문장에서도 글꼴 전환과 줄바꿈이 안전 영역을 벗어나지 않아야 합니다.";
   const lines = PdfWorkflow.wrapStyledText(source, 13.5, 443.622, fonts);
   const text = line => line.map(run => run.text).join("");
@@ -98,14 +99,15 @@ test("one-page export embeds Noto Sans as simple vector text inside the B5 safe 
   assert.equal(result.metrics.pages, 1);
   assert.equal(result.metrics.images, 0, "whole-page rasterization must never occur");
   assert.equal(result.metrics.contentStreams, 1);
-  assert.equal(result.metrics.embeddedFonts, 5);
-  assert.ok(result.metrics.unicodeMaps >= 5, "all Noto faces must retain searchable Unicode maps");
+  assert.equal(result.metrics.embeddedFonts, 6);
+  assert.ok(result.metrics.unicodeMaps >= 6, "all Noto faces must retain searchable Unicode maps");
   assert.ok(result.metrics.fontNames.some(name => name.includes("NotoSansKR-Regular")), result.metrics.fontNames.join(", "));
+  assert.ok(result.metrics.fontNames.some(name => name.includes("NotoSansKR-Bold")), result.metrics.fontNames.join(", "));
   assert.ok(result.metrics.fontNames.some(name => name.includes("NotoSans-Regular")), result.metrics.fontNames.join(", "));
   assert.ok(result.metrics.fontNames.some(name => name.includes("NotoSans-Bold")), result.metrics.fontNames.join(", "));
   assert.ok(result.metrics.fontNames.some(name => name.includes("NotoSans-Italic")), result.metrics.fontNames.join(", "));
   assert.ok(result.metrics.objects < 60, `unexpected object count: ${result.metrics.objects}`);
-  assert.ok(result.bytes.length < 4_500_000, `unexpected file size: ${result.bytes.length}`);
+  assert.ok(result.bytes.length < 6_500_000, `unexpected file size: ${result.bytes.length}`);
   assertSafeLayout(result, 1);
 });
 
@@ -113,7 +115,7 @@ test("multi-page export keeps one content stream per page and reuses resources",
   const result = await PdfWorkflow.createWorksheetPdf(layout(2), { fontBytes });
   assert.equal(result.metrics.pages, 2);
   assert.equal(result.metrics.contentStreams, 2);
-  assert.equal(result.metrics.embeddedFonts, 5);
+  assert.equal(result.metrics.embeddedFonts, 6);
   assert.equal(result.metrics.images, 0);
   assert.equal(result.metrics.transparency, 0);
   assertSafeLayout(result, 2);

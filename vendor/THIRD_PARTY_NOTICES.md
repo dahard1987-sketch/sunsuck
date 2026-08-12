@@ -12,8 +12,18 @@ Copyright (c) Andrew Dillon and fontkit contributors. Distributed under the MIT 
 
 Source: https://github.com/Hopding/fontkit
 
-## Nanum Gothic
+## Noto Sans
 
-Copyright (c) 2010 NAVER Corporation. Licensed under the SIL Open Font License 1.1.
+Copyright 2015-2021 Google LLC and the Noto Project Authors. Licensed under the SIL Open Font License 1.1.
 
-See `../assets/OFL-NanumGothic.txt`.
+Source: https://github.com/notofonts/noto-fonts
+
+See `../assets/OFL-NotoSans.txt`.
+
+## Noto Sans KR
+
+Copyright 2014-2021 Adobe and the Noto Project Authors. Licensed under the SIL Open Font License 1.1. The bundled Regular TTF is a weight-400 static instance of the official Google Fonts variable font.
+
+Source: https://github.com/google/fonts/tree/main/ofl/notosanskr
+
+See `../assets/OFL-NotoSansCJK.txt`.

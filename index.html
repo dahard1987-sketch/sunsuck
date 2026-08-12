@@ -5,6 +5,46 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>B5 해석지 스튜디오</title>
   <style>
+    @font-face {
+      font-family: "Noto Sans Embedded";
+      src: url("assets/NotoSans-Regular.ttf") format("truetype");
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "Noto Sans Embedded";
+      src: url("assets/NotoSans-Bold.ttf") format("truetype");
+      font-style: normal;
+      font-weight: 700 900;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "Noto Sans Embedded";
+      src: url("assets/NotoSans-Italic.ttf") format("truetype");
+      font-style: italic;
+      font-weight: 400;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "Noto Sans Embedded";
+      src: url("assets/NotoSans-BoldItalic.ttf") format("truetype");
+      font-style: italic;
+      font-weight: 700 900;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "Noto Sans KR Embedded";
+      src: url("assets/NotoSansKR-Regular.ttf") format("truetype");
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+    }
+
     :root {
       color-scheme: light;
       --accent: #c4171d;
@@ -28,8 +68,8 @@
       --guide-gap: 8.5mm;
       --preview-zoom: 1;
       --ui-font: "Pretendard Variable", Pretendard, "SUIT Variable", SUIT, "Segoe UI Variable Text", "Segoe UI", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-      --document-font: "Pretendard Variable", Pretendard, "SUIT Variable", SUIT, "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", sans-serif;
-      --english-font: Aptos, "Segoe UI Variable Text", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --document-font: "Noto Sans KR Embedded", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      --english-font: "Noto Sans Embedded", "Noto Sans", Arial, sans-serif;
       font-family: var(--ui-font);
     }
 

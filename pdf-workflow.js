@@ -14,8 +14,18 @@
   const B5_WIDTH = 182 * PT_PER_MM;
   const B5_HEIGHT = 257 * PT_PER_MM;
   const MAX_PDF_BYTES = 50 * 1024 * 1024;
-  const FONT_URL = "assets/NanumGothic-Regular.ttf";
-  let cachedFontBytes = null;
+  // pdf-lib/fontkit emits full CJK fonts with 1000-unit PDF advances while
+  // Noto Sans KR reports 920-unit Hangul advances. Account for the renderer's
+  // actual width so wrapping and right-edge checks match the finished PDF.
+  const CJK_RENDER_WIDTH_SCALE = 1000 / 920;
+  const FONT_URLS = Object.freeze({
+    korean: "assets/NotoSansKR-Regular.ttf",
+    regular: "assets/NotoSans-Regular.ttf",
+    bold: "assets/NotoSans-Bold.ttf",
+    italic: "assets/NotoSans-Italic.ttf",
+    boldItalic: "assets/NotoSans-BoldItalic.ttf"
+  });
+  const cachedFontBytes = Object.create(null);
 
   function requireLibraries() {
     if (!PDFLib || !fontkit) {
@@ -98,14 +108,23 @@
     return runs.filter(run => run.text);
   }
 
-  async function loadFontBytes(override) {
+  async function loadFontFile(role, override) {
     if (override) return override instanceof Uint8Array ? override : new Uint8Array(override);
-    if (cachedFontBytes) return cachedFontBytes;
-    if (typeof fetch !== "function") throw new Error("한글 PDF 폰트를 불러올 수 없습니다.");
-    const response = await fetch(FONT_URL);
-    if (!response.ok) throw new Error(`한글 PDF 폰트 로드 실패 (${response.status})`);
-    cachedFontBytes = new Uint8Array(await response.arrayBuffer());
-    return cachedFontBytes;
+    if (cachedFontBytes[role]) return cachedFontBytes[role];
+    if (typeof fetch !== "function") throw new Error("Noto Sans PDF 폰트를 불러올 수 없습니다.");
+    const response = await fetch(FONT_URLS[role]);
+    if (!response.ok) throw new Error(`Noto Sans PDF 폰트 로드 실패 (${response.status})`);
+    cachedFontBytes[role] = new Uint8Array(await response.arrayBuffer());
+    return cachedFontBytes[role];
+  }
+
+  async function loadFontBytes(overrides) {
+    const supplied = overrides || {};
+    const entries = await Promise.all(Object.keys(FONT_URLS).map(async role => [
+      role,
+      await loadFontFile(role, supplied[role])
+    ]));
+    return Object.fromEntries(entries);
   }
 
   function hexColor(value) {
@@ -148,7 +167,8 @@
 
   function appendLineRun(line, run) {
     const previous = line[line.length - 1];
-    if (previous && previous.bold === run.bold && previous.italic === run.italic && previous.underline === run.underline) {
+    const sameFontGroup = previous && isLatinText(previous.text) === isLatinText(run.text);
+    if (sameFontGroup && previous.bold === run.bold && previous.italic === run.italic && previous.underline === run.underline) {
       previous.text += run.text;
     } else {
       line.push({ ...run });
@@ -156,7 +176,12 @@
   }
 
   function runWidth(run, size, fonts) {
-    return fontForRun(run, fonts).widthOfTextAtSize(run.text, size);
+    const measured = fontForRun(run, fonts).widthOfTextAtSize(run.text, size);
+    return isLatinText(run.text) ? measured : measured * CJK_RENDER_WIDTH_SCALE;
+  }
+
+  function lineWidth(line, size, fonts) {
+    return line.reduce((sum, run) => sum + runWidth(run, size, fonts), 0);
   }
 
   function wrapStyledText(source, size, maxWidth, fonts) {
@@ -211,7 +236,7 @@
       line.forEach(run => {
         const font = fontForRun(run, fonts);
         page.drawText(run.text, { x: cursorX, y, size, font, color });
-        const width = font.widthOfTextAtSize(run.text, size);
+        const width = runWidth(run, size, fonts);
         if (run.underline && run.text.trim()) {
           page.drawLine({
             start: { x: cursorX, y: y - 1.2 },
@@ -225,17 +250,18 @@
     });
   }
 
-  function fitSingleLine(text, font, preferredSize, maxWidth, minimumSize) {
+  function fitSingleLine(text, font, preferredSize, maxWidth, minimumSize, widthScale = 1) {
     let size = preferredSize;
-    while (size > minimumSize && font.widthOfTextAtSize(text, size) > maxWidth) size -= 0.25;
+    while (size > minimumSize && font.widthOfTextAtSize(text, size) * widthScale > maxWidth) size -= 0.25;
     return size;
   }
 
   function drawCenteredText(page, text, options) {
     const value = cleanText(text);
     if (!value) return;
-    const size = fitSingleLine(value, options.font, options.size, options.width, options.minimumSize || 5.5);
-    const textWidth = options.font.widthOfTextAtSize(value, size);
+    const widthScale = options.widthScale || 1;
+    const size = fitSingleLine(value, options.font, options.size, options.width, options.minimumSize || 5.5, widthScale);
+    const textWidth = options.font.widthOfTextAtSize(value, size) * widthScale;
     page.drawText(value, {
       x: options.x + Math.max(0, (options.width - textWidth) / 2),
       y: options.y,
@@ -257,11 +283,11 @@
     page.drawRectangle({ x: left, y: top - mm(6.6), width: categoryWidth, height: mm(6.6), color: accent });
     drawCenteredText(page, settings.categoryLabel, {
       x: left + mm(1.5), width: categoryWidth - mm(3), y: top - mm(4.7), size: 9.2,
-      font: fonts.korean, color: contrast, minimumSize: 6
+      font: fonts.korean, color: contrast, minimumSize: 6, widthScale: CJK_RENDER_WIDTH_SCALE
     });
     drawCenteredText(page, settings.semesterLabel, {
       x: left + mm(1), width: categoryWidth - mm(2), y: top - mm(11.5), size: 8.4,
-      font: fonts.korean, color: PDFLib.rgb(0.08, 0.08, 0.08), minimumSize: 6
+      font: fonts.korean, color: PDFLib.rgb(0.08, 0.08, 0.08), minimumSize: 6, widthScale: CJK_RENDER_WIDTH_SCALE
     });
     page.drawLine({
       start: { x: left, y: top - mm(13.1) }, end: { x: left + categoryWidth, y: top - mm(13.1) },
@@ -270,7 +296,7 @@
 
     drawCenteredText(page, settings.worksheetTitle, {
       x: titleX, width: titleWidth, y: top - mm(10.3), size: 18,
-      font: fonts.korean, color: accent, minimumSize: 9
+      font: fonts.korean, color: accent, minimumSize: 9, widthScale: CJK_RENDER_WIDTH_SCALE
     });
 
     const labelColor = PDFLib.rgb(0.08, 0.08, 0.08);
@@ -279,7 +305,7 @@
     page.drawText("Teacher:", { x: identityX, y: top - mm(9.5), size: 7.8, font: fonts.regular, color: labelColor });
     const teacher = cleanText(settings.teacherName);
     if (teacher) {
-      const teacherSize = fitSingleLine(teacher, fonts.korean, 7.8, identityWidth - mm(17), 5.5);
+      const teacherSize = fitSingleLine(teacher, fonts.korean, 7.8, identityWidth - mm(17), 5.5, CJK_RENDER_WIDTH_SCALE);
       page.drawText(teacher, { x: identityX + mm(17), y: top - mm(9.5), size: teacherSize, font: fonts.korean, color: labelColor });
     }
     page.drawLine({ start: { x: identityX, y: top - mm(10.7) }, end: { x: identityX + identityWidth, y: top - mm(10.7) }, thickness: 0.9, color: labelColor });
@@ -287,14 +313,14 @@
     const meta = [settings.className ? `Class · ${settings.className}` : "", settings.worksheetDate ? `Date · ${settings.worksheetDate}` : ""]
       .filter(Boolean).join("   ");
     if (meta) {
-      const metaSize = fitSingleLine(meta, fonts.korean, 6.2, identityWidth, 4.8);
+      const metaSize = fitSingleLine(meta, fonts.korean, 6.2, identityWidth, 4.8, CJK_RENDER_WIDTH_SCALE);
       page.drawText(meta, { x: identityX, y: top - mm(14.2), size: metaSize, font: fonts.korean, color: PDFLib.rgb(0.3, 0.3, 0.3) });
     }
 
     const stripTop = top - mm(19.2);
     page.drawRectangle({ x: left, y: stripTop - mm(7.5), width: B5_WIDTH - mm(18), height: mm(7.5), color: accent });
     const unit = cleanText(settings.unitTitle);
-    const unitSize = fitSingleLine(unit, fonts.korean, 10.2, B5_WIDTH - mm(23), 6.5);
+    const unitSize = fitSingleLine(unit, fonts.korean, 10.2, B5_WIDTH - mm(23), 6.5, CJK_RENDER_WIDTH_SCALE);
     page.drawText(unit, { x: left + mm(2.4), y: stripTop - mm(5), size: unitSize, font: fonts.korean, color: contrast });
     return stripTop - mm(9);
   }
@@ -304,10 +330,10 @@
     const right = B5_WIDTH - mm(9);
     const top = B5_HEIGHT - mm(8.5);
     const title = cleanText(settings.worksheetTitle);
-    const titleSize = fitSingleLine(title, fonts.korean, 10.5, mm(115), 7);
+    const titleSize = fitSingleLine(title, fonts.korean, 10.5, mm(115), 7, CJK_RENDER_WIDTH_SCALE);
     page.drawText(title, { x: left, y: top - mm(4), size: titleSize, font: fonts.korean, color: accent });
     const unit = cleanText(settings.unitTitle);
-    const unitSize = fitSingleLine(unit, fonts.korean, 6.6, mm(125), 5);
+    const unitSize = fitSingleLine(unit, fonts.korean, 6.6, mm(125), 5, CJK_RENDER_WIDTH_SCALE);
     page.drawText(unit, { x: left, y: top - mm(7.2), size: unitSize, font: fonts.korean, color: PDFLib.rgb(0.3, 0.3, 0.3) });
     const pageText = `${pageNumber} / ${totalPages}`;
     const pageWidth = fonts.bold.widthOfTextAtSize(pageText, 7);
@@ -321,8 +347,8 @@
     const y = mm(8.7);
     const color = PDFLib.rgb(0.62, 0.62, 0.62);
     const footer = cleanText(settings.footerText);
-    const footerSize = fitSingleLine(footer, fonts.korean, 6.4, mm(90), 5);
-    const footerWidth = fonts.korean.widthOfTextAtSize(footer, footerSize);
+    const footerSize = fitSingleLine(footer, fonts.korean, 6.4, mm(90), 5, CJK_RENDER_WIDTH_SCALE);
+    const footerWidth = fonts.korean.widthOfTextAtSize(footer, footerSize) * CJK_RENDER_WIDTH_SCALE;
     page.drawText(footer, { x: (B5_WIDTH - footerWidth) / 2, y, size: footerSize, font: fonts.korean, color });
     const pageText = `${pageNumber} / ${totalPages}`;
     page.drawText(pageText, {
@@ -347,6 +373,8 @@
           lines,
           fontSize,
           lineHeight,
+          textWidth,
+          maxLineWidth: lines.reduce((maximum, line) => Math.max(maximum, lineWidth(line, fontSize, fonts)), 0),
           rowHeight,
           answerHeight: Math.max(mm(1.8), (group.heights[localIndex] || 0) * mmPerPixel * PT_PER_MM)
         };
@@ -378,12 +406,12 @@
     const fontBytes = await loadFontBytes(options && options.fontBytes);
     const fonts = {
       // fontkit's CJK subsetting corrupts glyph maps in several PDF renderers.
-      // One complete Korean font is safer and still keeps the document graph simple.
-      korean: await pdfDoc.embedFont(fontBytes, { subset: false }),
-      regular: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-      bold: await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold),
-      italic: await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaOblique),
-      boldItalic: await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBoldOblique)
+      // Keep Korean complete, while safely subsetting the much smaller Latin faces.
+      korean: await pdfDoc.embedFont(fontBytes.korean, { subset: false }),
+      regular: await pdfDoc.embedFont(fontBytes.regular, { subset: true }),
+      bold: await pdfDoc.embedFont(fontBytes.bold, { subset: true }),
+      italic: await pdfDoc.embedFont(fontBytes.italic, { subset: true }),
+      boldItalic: await pdfDoc.embedFont(fontBytes.boldItalic, { subset: true })
     };
     const accent = hexColor(settings.accentColor);
     const rgbSource = /^#[0-9a-f]{6}$/i.test(settings.accentColor || "") ? settings.accentColor : "#c4171d";
@@ -398,6 +426,7 @@
     pdfDoc.setCreator("CANB B5 Worksheet Studio");
     pdfDoc.setProducer("pdf-lib 1.17.1");
 
+    const pageLayouts = [];
     plan.pageGroups.slice(0, 2).forEach((group, pageIndex) => {
       const page = pdfDoc.addPage([B5_WIDTH, B5_HEIGHT]);
       const bodyTop = pageIndex === 0
@@ -450,11 +479,29 @@
         }
         if (settings.showAnswerHint) {
           const hint = "해석";
-          const hintWidth = fonts.korean.widthOfTextAtSize(hint, 5.6);
+          const hintWidth = fonts.korean.widthOfTextAtSize(hint, 5.6) * CJK_RENDER_WIDTH_SCALE;
           page.drawText(hint, { x: left + width - hintWidth, y: cursorTop - mm(3.2), size: 5.6, font: fonts.korean, color: PDFLib.rgb(0.72, 0.72, 0.72) });
         }
         page.drawLine({ start: { x: left, y: answerBottom }, end: { x: left + width, y: answerBottom }, thickness: mm(0.32), color: PDFLib.rgb(0.12, 0.12, 0.12) });
         cursorTop = answerBottom;
+      });
+
+      const widestLine = items.reduce((maximum, item) => Math.max(maximum, item.maxLineWidth), 0);
+      const narrowestTextArea = items.reduce((minimum, item) => Math.min(minimum, item.textWidth), Infinity);
+      const horizontalOverflow = widestLine > narrowestTextArea + 0.1;
+      const verticalOverflow = cursorTop < bodyBottom - 0.1;
+      if (horizontalOverflow || verticalOverflow) {
+        throw new Error("Noto Sans 기준으로 PDF 안전 영역을 벗어납니다. 지문 길이나 글자 크기를 조정해 주세요.");
+      }
+      pageLayouts.push({
+        page: pageIndex + 1,
+        bodyTop,
+        bodyBottom,
+        finalBottom: cursorTop,
+        widestLine,
+        textWidth: Number.isFinite(narrowestTextArea) ? narrowestTextArea : width,
+        horizontalOverflow,
+        verticalOverflow
       });
     });
 
@@ -463,7 +510,8 @@
     return {
       bytes,
       filename: safeFilename(settings.worksheetTitle, ".pdf"),
-      metrics
+      metrics,
+      layout: { pages: pageLayouts }
     };
   }
 
@@ -487,6 +535,7 @@
     let images = 0;
     let streams = 0;
     let transparency = 0;
+    const fontNames = new Set();
 
     objects.forEach(([, object]) => {
       const dict = object instanceof PDFLib.PDFStream ? object.dict : object;
@@ -494,6 +543,7 @@
       const type = pdfName(getDictValue(dict, "Type"));
       const subtype = pdfName(getDictValue(dict, "Subtype"));
       if (type === "/Font") fonts += 1;
+      if (type === "/Font" && getDictValue(dict, "BaseFont")) fontNames.add(pdfName(getDictValue(dict, "BaseFont")));
       if (type === "/Font" && getDictValue(dict, "ToUnicode")) unicodeMaps += 1;
       if (subtype === "/Image") images += 1;
       if (getDictValue(dict, "FontFile") || getDictValue(dict, "FontFile2") || getDictValue(dict, "FontFile3")) embeddedFonts += 1;
@@ -525,7 +575,8 @@
       contentStreams,
       annotations,
       formFields,
-      transparency
+      transparency,
+      fontNames: Array.from(fontNames).sort()
     };
   }
 

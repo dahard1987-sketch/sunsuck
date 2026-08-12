@@ -4,9 +4,26 @@ const path = require("node:path");
 const test = require("node:test");
 
 const PDFLib = require("../vendor/pdf-lib.min.js");
+const fontkit = require("../vendor/fontkit.umd.min.js");
 const PdfWorkflow = require("../pdf-workflow.js");
 
-const fontBytes = fs.readFileSync(path.join(__dirname, "../assets/NanumGothic-Regular.ttf"));
+const fontBytes = {
+  korean: fs.readFileSync(path.join(__dirname, "../assets/NotoSansKR-Regular.ttf")),
+  regular: fs.readFileSync(path.join(__dirname, "../assets/NotoSans-Regular.ttf")),
+  bold: fs.readFileSync(path.join(__dirname, "../assets/NotoSans-Bold.ttf")),
+  italic: fs.readFileSync(path.join(__dirname, "../assets/NotoSans-Italic.ttf")),
+  boldItalic: fs.readFileSync(path.join(__dirname, "../assets/NotoSans-BoldItalic.ttf"))
+};
+
+function assertSafeLayout(result, expectedPages) {
+  assert.equal(result.layout.pages.length, expectedPages);
+  result.layout.pages.forEach(page => {
+    assert.equal(page.horizontalOverflow, false, `page ${page.page} has horizontal overflow`);
+    assert.equal(page.verticalOverflow, false, `page ${page.page} has vertical overflow`);
+    assert.ok(page.widestLine <= page.textWidth + 0.1, `page ${page.page} line exceeds text area`);
+    assert.ok(page.finalBottom >= page.bodyBottom - 0.1, `page ${page.page} content exceeds bottom margin`);
+  });
+}
 
 function settings(overrides = {}) {
   return {
@@ -59,25 +76,65 @@ test("markup parser keeps supported inline styles", () => {
   assert.equal(runs.find(run => run.text === "underlined").underline, true);
 });
 
-test("one-page export is a simple vector/text B5 PDF with one Korean font", async () => {
+test("mixed Korean and Latin wrapping reserves the finished PDF's CJK advance width", async () => {
+  const document = await PDFLib.PDFDocument.create();
+  document.registerFontkit(fontkit);
+  const korean = await document.embedFont(fontBytes.korean, { subset: false });
+  const regular = await document.embedFont(fontBytes.regular, { subset: true });
+  const fonts = { korean, regular, bold: regular, italic: regular, boldItalic: regular };
+  const source = "한글과 English가 교차하는 혼합 문장에서도 글꼴 전환과 줄바꿈이 안전 영역을 벗어나지 않아야 합니다.";
+  const lines = PdfWorkflow.wrapStyledText(source, 13.5, 443.622, fonts);
+  const text = line => line.map(run => run.text).join("");
+
+  assert.equal(lines.map(text).join(""), source);
+  assert.equal(lines.length, 2);
+  assert.ok(!text(lines[0]).includes("영역을"), "CJK renderer-width correction must wrap before the right edge");
+  assert.ok(lines[0].length > 1, "Korean and Latin segments must keep their own font runs");
+});
+
+test("one-page export embeds Noto Sans as simple vector text inside the B5 safe area", async () => {
   const result = await PdfWorkflow.createWorksheetPdf(layout(1), { fontBytes });
   assert.equal(Buffer.from(result.bytes).subarray(0, 5).toString(), "%PDF-");
   assert.equal(result.metrics.pages, 1);
   assert.equal(result.metrics.images, 0, "whole-page rasterization must never occur");
   assert.equal(result.metrics.contentStreams, 1);
-  assert.equal(result.metrics.embeddedFonts, 1);
-  assert.ok(result.metrics.unicodeMaps >= 1, "Korean text must retain a searchable Unicode map");
-  assert.ok(result.metrics.objects < 30, `unexpected object count: ${result.metrics.objects}`);
-  assert.ok(result.bytes.length < 1_000_000, `unexpected file size: ${result.bytes.length}`);
+  assert.equal(result.metrics.embeddedFonts, 5);
+  assert.ok(result.metrics.unicodeMaps >= 5, "all Noto faces must retain searchable Unicode maps");
+  assert.ok(result.metrics.fontNames.some(name => name.includes("NotoSansKR-Regular")), result.metrics.fontNames.join(", "));
+  assert.ok(result.metrics.fontNames.some(name => name.includes("NotoSans-Regular")), result.metrics.fontNames.join(", "));
+  assert.ok(result.metrics.fontNames.some(name => name.includes("NotoSans-Bold")), result.metrics.fontNames.join(", "));
+  assert.ok(result.metrics.fontNames.some(name => name.includes("NotoSans-Italic")), result.metrics.fontNames.join(", "));
+  assert.ok(result.metrics.objects < 60, `unexpected object count: ${result.metrics.objects}`);
+  assert.ok(result.bytes.length < 4_500_000, `unexpected file size: ${result.bytes.length}`);
+  assertSafeLayout(result, 1);
 });
 
 test("multi-page export keeps one content stream per page and reuses resources", async () => {
   const result = await PdfWorkflow.createWorksheetPdf(layout(2), { fontBytes });
   assert.equal(result.metrics.pages, 2);
   assert.equal(result.metrics.contentStreams, 2);
-  assert.equal(result.metrics.embeddedFonts, 1);
+  assert.equal(result.metrics.embeddedFonts, 5);
   assert.equal(result.metrics.images, 0);
   assert.equal(result.metrics.transparency, 0);
+  assertSafeLayout(result, 2);
+});
+
+test("long mixed-style Noto Sans text wraps without crossing page bounds", async () => {
+  const stress = layout(2);
+  stress.settings.fontSize = "large";
+  stress.sentences = [
+    "**Accessibility** and *internationalization* require deliberate typography, predictable spacing, and readable line lengths even when a sentence contains exceptionallylongunbrokenidentifierswithoutnaturalbreakpoints.",
+    "Curly quotes “like these,” em dashes — plus 99.9% figures — verify the full Latin punctuation path while __underlining remains selectable__.",
+    "한글과 English가 교차하는 혼합 문장에서도 글꼴 전환과 줄바꿈이 안전 영역을 벗어나지 않아야 합니다."
+  ];
+  stress.result.plan.pageGroups = [
+    { indices: [0, 1], heights: [145, 155] },
+    { indices: [2], heights: [250] }
+  ];
+  const result = await PdfWorkflow.createWorksheetPdf(stress, { fontBytes });
+  assert.equal(result.metrics.pages, 2);
+  assert.equal(result.metrics.images, 0);
+  assertSafeLayout(result, 2);
 });
 
 test("optimizer flattens forms and drops unreachable document objects", async () => {

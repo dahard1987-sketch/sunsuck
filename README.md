@@ -5,7 +5,7 @@
 ## PDF architecture
 
 - `Download PDF`는 DOM 캡처나 브라우저 인쇄를 사용하지 않습니다. `pdf-lib`로 JIS B5 페이지에 텍스트, 선, 사각형을 직접 그립니다.
-- 영문은 PDF 기본 Helvetica 계열을 사용하고, 한글은 정적 Nanum Gothic 한 벌만 임베딩합니다. `fontkit`의 CJK 부분집합은 일부 PDF 렌더러에서 글리프 맵을 손상시키므로 한글 폰트는 안전하게 전체 임베딩합니다. 페이지 이미지가 없으므로 텍스트는 선택·검색할 수 있습니다.
+- 미리보기와 PDF의 영문은 Noto Sans Regular/Bold/Italic/Bold Italic을 사용하며, 한글은 Noto Sans KR을 사용합니다. 영문 글꼴은 문서에 쓰인 글자만 임베딩하고, `fontkit`의 CJK 부분집합이 일부 PDF 렌더러에서 글리프 맵을 손상시키는 문제를 피하기 위해 한국어 전용 글꼴은 안전하게 전체 임베딩합니다. 페이지 이미지가 없으므로 텍스트는 선택·검색할 수 있습니다.
 - 각 페이지는 단일 콘텐츠 스트림을 사용하고, 그림자·마스크·투명 그룹·SVG·Form XObject를 만들지 않습니다.
 - 업로드 최적화는 `pdf-lib`로 문서를 파싱하고 양식 외형을 고정한 뒤 모든 페이지를 새 `PDFDocument`로 복사합니다. 이 과정에서 페이지에서 도달할 수 없는 객체와 문서 수준의 JavaScript, 불필요한 메타데이터·부가 구조가 제외되고, 압축 객체 스트림으로 다시 저장됩니다.
 - 주석은 시각적 의미를 바꿀 수 있으므로 일반 주석을 강제로 삭제하거나 래스터화하지 않습니다. 페이지 콘텐츠 자체의 수천 개 벡터 명령, 복잡한 투명도, 중첩 XObject를 브라우저에서 안전하게 해석·재작성할 수 없는 경우에는 그대로 보존됩니다.
@@ -34,4 +34,5 @@ npm run serve
 
 - `pdf-lib` 1.17.1 — MIT
 - `@pdf-lib/fontkit` 1.1.1 — MIT
-- Nanum Gothic — SIL Open Font License 1.1 (`assets/OFL-NanumGothic.txt`)
+- Noto Sans — SIL Open Font License 1.1 (`assets/OFL-NotoSans.txt`)
+- Noto Sans KR — SIL Open Font License 1.1 (`assets/OFL-NotoSansCJK.txt`)

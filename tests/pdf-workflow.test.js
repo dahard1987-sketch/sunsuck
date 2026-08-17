@@ -77,6 +77,17 @@ test("markup parser keeps supported inline styles", () => {
   assert.equal(runs.find(run => run.text === "underlined").underline, true);
 });
 
+test("markup parser combines nested styles instead of dropping the inner marker", () => {
+  const runs = PdfWorkflow.parseMarkup("**bold *italic inside* still bold**");
+  assert.equal(runs.map(run => run.text).join(""), "bold italic inside still bold");
+  const inner = runs.find(run => run.text === "italic inside");
+  assert.equal(inner.bold, true);
+  assert.equal(inner.italic, true);
+  const outerBefore = runs.find(run => run.text === "bold ");
+  assert.equal(outerBefore.bold, true);
+  assert.equal(outerBefore.italic, false);
+});
+
 test("mixed Korean and Latin wrapping reserves the finished PDF's CJK advance width", async () => {
   const document = await PDFLib.PDFDocument.create();
   document.registerFontkit(fontkit);

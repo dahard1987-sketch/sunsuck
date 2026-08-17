@@ -717,6 +717,45 @@
       text-decoration-color: transparent;
     }
 
+    .sync-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .sync-code-input {
+      flex: 1 1 auto;
+      min-width: 0;
+      height: 30px;
+      padding: 0 8px;
+      color: #343a46;
+      background: #fff;
+      border: 1px solid #cfd3db;
+      border-radius: 6px;
+      font-size: 0.72rem;
+    }
+
+    .sync-row .text-button {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+
+    .sync-status {
+      margin: 4px 0 0;
+      color: #8a919e;
+      font-size: 0.64rem;
+      text-align: center;
+    }
+
+    .sync-status.is-success {
+      color: #2e8b57;
+    }
+
+    .sync-status.is-error {
+      color: var(--accent);
+    }
+
     .sub-actions {
       display: flex;
       justify-content: center;
@@ -1520,6 +1559,11 @@
           <button class="text-button" id="libraryLoadButton" type="button" disabled>불러오기</button>
           <button class="text-button" id="libraryDeleteButton" type="button" disabled>삭제</button>
         </div>
+        <div class="sync-row">
+          <input class="sync-code-input" id="syncCodeInput" type="text" placeholder="동기화 코드 (선택)" autocomplete="off" spellcheck="false">
+          <button class="text-button" id="syncConnectButton" type="button">연결</button>
+        </div>
+        <p class="sync-status" id="syncStatus" aria-live="polite"></p>
         <div class="sub-actions">
           <button class="text-button" id="resetButton" type="button">기본 예시로 초기화</button>
         </div>
@@ -1547,6 +1591,10 @@
   <script src="pdf-export.js"></script>
   <script src="pdf-optimize.js"></script>
   <script src="pdf-workflow.js"></script>
+  <script src="vendor/firebase-app-compat.js"></script>
+  <script src="vendor/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="cloud-sync.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

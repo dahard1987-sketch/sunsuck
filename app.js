@@ -71,6 +71,9 @@ enjoy life by just watching five-year-olds.`;
       const librarySaveButton = document.getElementById("librarySaveButton");
       const libraryLoadButton = document.getElementById("libraryLoadButton");
       const libraryDeleteButton = document.getElementById("libraryDeleteButton");
+      const syncCodeInput = document.getElementById("syncCodeInput");
+      const syncConnectButton = document.getElementById("syncConnectButton");
+      const syncStatus = document.getElementById("syncStatus");
       const pdfDropZone = document.getElementById("pdfDropZone");
       const pdfFileInput = document.getElementById("pdfFileInput");
       const pdfOptimizerStatus = document.getElementById("pdfOptimizerStatus");
@@ -347,6 +350,78 @@ enjoy life by just watching five-year-olds.`;
         libraryDeleteButton.disabled = !hasSelection;
       }
 
+      const SYNC_CODE_KEY = "canb-b5-worksheet-studio-sync-code";
+      let activeSyncCode = "";
+      let stopWatchingCloud = null;
+
+      function setSyncStatus(message, state = "") {
+        syncStatus.textContent = message;
+        syncStatus.classList.toggle("is-error", state === "error");
+        syncStatus.classList.toggle("is-success", state === "success");
+      }
+
+      function syncLibraryToCloud(list) {
+        if (!activeSyncCode) return;
+        CloudSync.pushLibrary(activeSyncCode, list).catch(error => {
+          setSyncStatus(error.message || "동기화 업로드에 실패했습니다.", "error");
+        });
+      }
+
+      function startCloudSync(code, { announce = true } = {}) {
+        const normalized = CloudSync.normalizeSyncCode(code);
+        if (!normalized) return;
+        if (!CloudSync.isConfigured()) {
+          setSyncStatus("Firebase 설정이 없어 동기화를 사용할 수 없습니다.", "error");
+          return;
+        }
+        if (stopWatchingCloud) stopWatchingCloud();
+        activeSyncCode = normalized;
+        syncCodeInput.value = normalized;
+        try {
+          localStorage.setItem(SYNC_CODE_KEY, normalized);
+        } catch (error) {
+          // Private browsing can disable storage; sync still works for this tab.
+        }
+        syncConnectButton.textContent = "연결 해제";
+        if (announce) setSyncStatus("연결 중…");
+        stopWatchingCloud = CloudSync.watchLibrary(
+          normalized,
+          entries => {
+            persistLibrary(entries);
+            renderLibrarySelect(entries, librarySelect.value);
+            setSyncStatus(`동기화됨 · "${normalized}"`, "success");
+          },
+          error => setSyncStatus(error.message || "동기화 연결에 실패했습니다.", "error")
+        );
+      }
+
+      function stopCloudSync() {
+        if (stopWatchingCloud) stopWatchingCloud();
+        stopWatchingCloud = null;
+        activeSyncCode = "";
+        try {
+          localStorage.removeItem(SYNC_CODE_KEY);
+        } catch (error) {
+          // Ignore storage failures; in-memory state is already cleared.
+        }
+        syncConnectButton.textContent = "연결";
+        setSyncStatus("이 기기에만 저장됩니다.");
+        renderLibrarySelect(loadLibrary(), librarySelect.value);
+      }
+
+      function toggleCloudSync() {
+        if (activeSyncCode) {
+          stopCloudSync();
+          return;
+        }
+        const code = syncCodeInput.value.trim();
+        if (!code) {
+          window.alert("동기화 코드를 입력해 주세요.");
+          return;
+        }
+        startCloudSync(code);
+      }
+
       function saveCurrentToLibrary() {
         const list = loadLibrary();
         const selectedId = librarySelect.value;
@@ -362,6 +437,7 @@ enjoy life by just watching five-year-olds.`;
         const id = existing ? existing.id : createLibraryId();
         const updated = saveToLibrary(id, name, readSettings());
         renderLibrarySelect(updated, id);
+        syncLibraryToCloud(updated);
       }
 
       function loadSelectedFromLibrary() {
@@ -382,6 +458,7 @@ enjoy life by just watching five-year-olds.`;
         if (!window.confirm(`"${entry.name}"을(를) 삭제할까요?`)) return;
         const updated = deleteFromLibrary(selectedId);
         renderLibrarySelect(updated);
+        syncLibraryToCloud(updated);
       }
 
       function appendText(parent, tag, className, text) {
@@ -1006,6 +1083,7 @@ enjoy life by just watching five-year-olds.`;
         libraryLoadButton.disabled = !hasSelection;
         libraryDeleteButton.disabled = !hasSelection;
       });
+      syncConnectButton.addEventListener("click", toggleCloudSync);
       pdfFileInput.addEventListener("change", () => processPdfFile(pdfFileInput.files[0]));
       optimizedDownloadButton.addEventListener("click", () => {
         if (optimizedPdf) PdfWorkflow.downloadBytes(optimizedPdf.bytes, optimizedPdf.filename);
@@ -1053,6 +1131,20 @@ enjoy life by just watching five-year-olds.`;
       applySettingsToForm(loadSettings());
       renderLibrarySelect(loadLibrary());
       renderWorksheet();
+
+      (function initCloudSync() {
+        let storedCode = "";
+        try {
+          storedCode = localStorage.getItem(SYNC_CODE_KEY) || "";
+        } catch (error) {
+          storedCode = "";
+        }
+        if (storedCode) {
+          startCloudSync(storedCode, { announce: false });
+        } else {
+          setSyncStatus("이 기기에만 저장됩니다.");
+        }
+      })();
 
       window.WorksheetGenerator = Object.freeze({
         normalizePassage,
